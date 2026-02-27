@@ -86,6 +86,9 @@ export default function SettingsScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showCurrentPwd, setShowCurrentPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
 
   const changePassword = useMutation({
     mutationFn: () =>
@@ -174,32 +177,50 @@ export default function SettingsScreen() {
           />
           {showPasswordForm && (
             <View style={[styles.passwordForm, { borderTopColor: colors.border }]}>
-              <TextInput
-                style={[styles.input, { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border }]}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                placeholder="Senha atual"
-                placeholderTextColor={colors.muted}
-                secureTextEntry
-              />
-              <TextInput
-                style={[styles.input, { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border }]}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                placeholder="Nova senha (mín. 6 caracteres)"
-                placeholderTextColor={colors.muted}
-                secureTextEntry
-              />
-              <TextInput
-                style={[styles.input, { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border }]}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Confirmar nova senha"
-                placeholderTextColor={colors.muted}
-                secureTextEntry
-                returnKeyType="done"
-                onSubmitEditing={handleChangePassword}
-              />
+              {/* Senha atual */}
+              <View style={[styles.inputWrapper, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <TextInput
+                  style={[styles.inputFlex, { color: colors.foreground }]}
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  placeholder="Senha atual"
+                  placeholderTextColor={colors.muted}
+                  secureTextEntry={!showCurrentPwd}
+                />
+                <TouchableOpacity onPress={() => setShowCurrentPwd(!showCurrentPwd)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <IconSymbol name={showCurrentPwd ? "eye.slash.fill" : "eye.fill"} size={18} color={colors.muted} />
+                </TouchableOpacity>
+              </View>
+              {/* Nova senha */}
+              <View style={[styles.inputWrapper, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <TextInput
+                  style={[styles.inputFlex, { color: colors.foreground }]}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="Nova senha (mín. 6 caracteres)"
+                  placeholderTextColor={colors.muted}
+                  secureTextEntry={!showNewPwd}
+                />
+                <TouchableOpacity onPress={() => setShowNewPwd(!showNewPwd)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <IconSymbol name={showNewPwd ? "eye.slash.fill" : "eye.fill"} size={18} color={colors.muted} />
+                </TouchableOpacity>
+              </View>
+              {/* Confirmar nova senha */}
+              <View style={[styles.inputWrapper, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <TextInput
+                  style={[styles.inputFlex, { color: colors.foreground }]}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Confirmar nova senha"
+                  placeholderTextColor={colors.muted}
+                  secureTextEntry={!showConfirmPwd}
+                  returnKeyType="done"
+                  onSubmitEditing={handleChangePassword}
+                />
+                <TouchableOpacity onPress={() => setShowConfirmPwd(!showConfirmPwd)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <IconSymbol name={showConfirmPwd ? "eye.slash.fill" : "eye.fill"} size={18} color={colors.muted} />
+                </TouchableOpacity>
+              </View>
               <TouchableOpacity
                 style={[styles.changePasswordBtn, { backgroundColor: "#8B5CF6" }, changePassword.isPending && styles.disabled]}
                 onPress={handleChangePassword}
@@ -386,6 +407,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  inputWrapper: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  inputFlex: {
+    flex: 1,
     fontSize: 15,
     lineHeight: 20,
   },

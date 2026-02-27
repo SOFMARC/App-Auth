@@ -22,13 +22,14 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { CompanySelectorButton, CompanySelectorModal } from "@/components/ui/company-selector";
 import type { User } from "@/lib/types/api";
 
-function UserAvatar({ name, size = 40 }: { name: string; size?: number }) {
+function UserAvatar({ name, size = 40 }: { name?: string | null; size?: number }) {
   const colors = useColors();
-  const initials = name
+  const safeName = name ?? "?";
+  const initials = safeName
     .split(" ")
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
+    .join("") || "?";
   return (
     <View
       style={[
@@ -51,10 +52,10 @@ function UserItem({ user, onPress }: { user: User; onPress: () => void }) {
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <UserAvatar name={user.nome} />
+      <UserAvatar name={user.nome ?? (user as User & { name?: string }).name} />
       <View style={styles.itemInfo}>
         <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
-          {user.nome}
+          {user.nome ?? (user as User & { name?: string }).name ?? "(sem nome)"}
         </Text>
         <Text style={[styles.itemEmail, { color: colors.muted }]} numberOfLines={1}>
           {user.email}

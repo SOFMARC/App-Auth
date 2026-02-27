@@ -225,3 +225,10 @@
 ## Fix: Mensagem de erro de login da API
 
 - [x] Exibir mensagem retornada pela API (success=false, message="Email ou senha inválidos") na tela de login
+
+## Fix: Crash UserAvatar e melhorias UX
+
+- [x] Corrigir crash UserAvatar: TypeError Cannot read property 'split' of undefined (nome/name pode ser undefined)
+- [x] Adicionar olhinho (toggle visibilidade) em todos os campos de senha do app (settings, new-user)
+- [x] Redesenhar tela de detalhes da Empresa com abas: Info, Apps, Usuários (com modal de grant de acesso)
+- [x] Melhorar fluxo Empresa → App → Usuários: tela de empresa mostra apps do sistema e usuários com botão de conceder acesso por app+role

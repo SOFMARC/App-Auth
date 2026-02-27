@@ -18,6 +18,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useToast } from "@/lib/toast-context";
 import { ScreenContainer } from "@/components/screen-container";
 import { ScreenHeader } from "@/components/ui/screen-header";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 
 function FormField({
   label,
@@ -39,26 +40,43 @@ function FormField({
   required?: boolean;
 }) {
   const colors = useColors();
+  const [showSecret, setShowSecret] = useState(false);
+  const isPassword = secureTextEntry === true;
+
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: colors.foreground }]}>
         {label}
         {required && <Text style={{ color: colors.error }}> *</Text>}
       </Text>
-      <TextInput
-        style={[
-          styles.input,
-          { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border },
-        ]}
-        placeholder={placeholder}
-        placeholderTextColor={colors.muted}
-        value={value}
-        onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize ?? "none"}
-        returnKeyType="next"
-      />
+      <View style={[
+        styles.inputWrapper,
+        { backgroundColor: colors.background, borderColor: colors.border },
+      ]}>
+        <TextInput
+          style={[styles.inputFlex, { color: colors.foreground }]}
+          placeholder={placeholder}
+          placeholderTextColor={colors.muted}
+          value={value}
+          onChangeText={onChangeText}
+          secureTextEntry={isPassword && !showSecret}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize ?? "none"}
+          returnKeyType="next"
+        />
+        {isPassword && (
+          <TouchableOpacity
+            onPress={() => setShowSecret(!showSecret)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <IconSymbol
+              name={showSecret ? "eye.slash.fill" : "eye.fill"}
+              size={18}
+              color={colors.muted}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
@@ -202,11 +220,17 @@ const styles = StyleSheet.create({
   },
   field: { gap: 6 },
   label: { fontSize: 13, fontWeight: "600" },
-  input: {
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    gap: 10,
+  },
+  inputFlex: {
+    flex: 1,
     fontSize: 15,
     lineHeight: 20,
   },
