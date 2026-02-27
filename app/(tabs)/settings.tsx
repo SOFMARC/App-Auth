@@ -16,9 +16,11 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/lib/toast-context";
 import { useColors } from "@/hooks/use-colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useCompany } from "@/lib/company-context";
 import { ScreenContainer } from "@/components/screen-container";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { CompanySelectorButton, CompanySelectorModal } from "@/components/ui/company-selector";
 
 function SettingsRow({
   icon,
@@ -72,11 +74,13 @@ function SectionHeader({ title }: { title: string }) {
 export default function SettingsScreen() {
   const { user, logout, isMaster } = useAuth();
   const { showSuccess, showError } = useToast();
+  const { selectedCompany, selectCompany } = useCompany();
   const router = useRouter();
   const colors = useColors();
   const colorScheme = useColorScheme();
 
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [selectorVisible, setSelectorVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -212,6 +216,36 @@ export default function SettingsScreen() {
           )}
         </View>
 
+        {/* Empresa Ativa */}
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <SectionHeader title="Empresa Ativa" />
+          <View style={[styles.row, { borderBottomColor: colors.border }]}>
+            <View style={[styles.rowIcon, { backgroundColor: colors.primary + "15" }]}>
+              <IconSymbol name="building.fill" size={18} color={colors.primary} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Empresa Selecionada</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.muted }]}>Filtra dados em todas as telas</Text>
+            </View>
+            <CompanySelectorButton onPress={() => setSelectorVisible(true)} />
+          </View>
+          {selectedCompany && (
+            <TouchableOpacity
+              style={[styles.row, { borderBottomColor: colors.border }]}
+              onPress={() => selectCompany(null)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.rowIcon, { backgroundColor: colors.error + "15" }]}>
+                <IconSymbol name="xmark.circle.fill" size={18} color={colors.error} />
+              </View>
+              <View style={styles.rowContent}>
+                <Text style={[styles.rowLabel, { color: colors.error }]}>Limpar Filtro</Text>
+                <Text style={[styles.rowSubtitle, { color: colors.muted }]}>Exibir todas as empresas</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+
         {/* API */}
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <SectionHeader title="Conexão" />
@@ -263,6 +297,11 @@ export default function SettingsScreen() {
         loading={loggingOut}
         onConfirm={handleLogout}
         onCancel={() => setConfirmLogout(false)}
+      />
+
+      <CompanySelectorModal
+        visible={selectorVisible}
+        onClose={() => setSelectorVisible(false)}
       />
     </ScreenContainer>
   );

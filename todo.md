@@ -95,3 +95,13 @@
 - [x] Testes unitários para validação de token
 - [x] Testes unitários para detecção de role MASTER
 - [x] Testes unitários para validação de DTOs
+
+## Seletor de Empresa Global
+- [x] Criar CompanyContext com empresa selecionada e lista de empresas
+- [x] Criar componente CompanySelector (bottom sheet / modal picker)
+- [x] Integrar CompanySelector no header do Dashboard
+- [x] Filtrar lista de Usuários por empresa selecionada
+- [x] Filtrar lista de Empresas para destacar empresa selecionada
+- [x] Filtrar Permissões por empresa selecionada
+- [x] Persistir empresa selecionada no AsyncStorage
+- [x] Exibir empresa ativa em todas as telas como badge no header

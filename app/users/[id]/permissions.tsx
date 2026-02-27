@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import type { Company, App, AppRole, AccessSnapshot } from "@/lib/types/api";
 import { useAuth } from "@/lib/auth-context";
+import { useCompany } from "@/lib/company-context";
 
 function DropdownPicker<T extends { id: number; name: string }>({
   label,
@@ -107,20 +108,30 @@ export default function UserPermissionsScreen() {
   const { access: myAccess } = useAuth();
   const queryClient = useQueryClient();
 
+  const { selectedCompany: globalCompany } = useCompany();
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [selectedApp, setSelectedApp] = useState<App | null>(null);
   const [selectedRole, setSelectedRole] = useState<AppRole | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<AccessSnapshot | null>(null);
 
+  // Pré-preencher empresa do contexto global quando a lista carregar
+  const { data: companies = [], isLoading: loadingCompanies } = useQuery({
+    queryKey: ["companies"],
+    queryFn: () => companiesApi.list(),
+  });
+
+  // Sincronizar empresa global → seleção local (quando companies carregam)
+  useEffect(() => {
+    if (globalCompany && !selectedCompany && companies.length > 0) {
+      const found = companies.find((c) => c.id === globalCompany.id);
+      if (found) setSelectedCompany(found);
+    }
+  }, [globalCompany, companies]);
+
   const { data: user } = useQuery({
     queryKey: ["user", id],
     queryFn: () => usersApi.get(Number(id)),
     enabled: !!id,
-  });
-
-  const { data: companies = [], isLoading: loadingCompanies } = useQuery({
-    queryKey: ["companies"],
-    queryFn: () => companiesApi.list(),
   });
 
   const { data: apps = [], isLoading: loadingApps } = useQuery({

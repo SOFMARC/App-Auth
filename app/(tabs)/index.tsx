@@ -2,10 +2,12 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } 
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useCompany } from "@/lib/company-context";
 import { useToast } from "@/lib/toast-context";
 import { useColors } from "@/hooks/use-colors";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { CompanySelectorButton, CompanySelectorModal } from "@/components/ui/company-selector";
 
 function Avatar({ name, size = 48 }: { name: string; size?: number }) {
   const colors = useColors();
@@ -73,18 +75,33 @@ function AccessCard({
 }
 
 export default function DashboardScreen() {
-  const { user, companies, access, logout, isMaster } = useAuth();
+  const { user, companies: authCompanies, access, logout, isMaster } = useAuth();
+  const { selectedCompany, refresh: refreshCompanies } = useCompany();
   const { showError } = useToast();
   const router = useRouter();
   const colors = useColors();
   const [refreshing, setRefreshing] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [selectorVisible, setSelectorVisible] = useState(false);
+
+  // Filtrar acessos pela empresa selecionada
+  const filteredAccess = selectedCompany
+    ? access.filter((a) => a.companyId === selectedCompany.id)
+    : access;
+
+  // Filtrar empresas do snapshot pela empresa selecionada
+  const filteredCompanies = selectedCompany
+    ? authCompanies.filter((c) => c.companyId === selectedCompany.id)
+    : authCompanies;
+
+  // Apps únicos nos acessos filtrados
+  const uniqueApps = [...new Set(filteredAccess.map((a) => a.appKey))].length;
 
   async function handleLogout() {
     setLoggingOut(true);
     try {
       await logout();
-    } catch (err) {
+    } catch {
       showError("Erro ao sair.");
     } finally {
       setLoggingOut(false);
@@ -93,7 +110,8 @@ export default function DashboardScreen() {
 
   async function onRefresh() {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
+    await refreshCompanies();
+    setTimeout(() => setRefreshing(false), 600);
   }
 
   const roles = user?.roles?.split(";").filter(Boolean) ?? [];
@@ -129,6 +147,31 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Seletor de Empresa */}
+        <View style={[styles.companySelectorRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.companySelectorLeft}>
+            <IconSymbol name="building.2.fill" size={16} color={colors.muted} />
+            <Text style={[styles.companySelectorLabel, { color: colors.muted }]}>Empresa ativa:</Text>
+          </View>
+          <CompanySelectorButton onPress={() => setSelectorVisible(true)} />
+        </View>
+
+        {/* Filtro ativo — indicador visual */}
+        {selectedCompany && (
+          <View style={[styles.filterBanner, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
+            <IconSymbol name="building.fill" size={14} color={colors.primary} />
+            <Text style={[styles.filterBannerText, { color: colors.primary }]} numberOfLines={1}>
+              Filtrando por: <Text style={{ fontWeight: "700" }}>{selectedCompany.name}</Text>
+            </Text>
+            <TouchableOpacity
+              onPress={() => setSelectorVisible(true)}
+              activeOpacity={0.7}
+            >
+              <IconSymbol name="pencil" size={14} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Perfil */}
         <View style={[styles.profileCard, { backgroundColor: colors.primary }]}>
           <Avatar name={user?.nome ?? "A"} size={56} />
@@ -151,35 +194,35 @@ export default function DashboardScreen() {
           )}
         </View>
 
-        {/* Stats rápidas */}
+        {/* Stats rápidas — baseadas nos dados filtrados */}
         <View style={styles.statsRow}>
           <StatCard
             label="Empresas"
-            value={companies.length}
+            value={filteredCompanies.length}
             icon="building.2.fill"
             color={colors.primary}
           />
           <StatCard
             label="Acessos"
-            value={access.length}
+            value={filteredAccess.length}
             icon="key.fill"
             color={colors.success}
           />
           <StatCard
             label="Apps"
-            value={[...new Set(access.map((a) => a.appKey))].length}
+            value={uniqueApps}
             icon="square.grid.2x2.fill"
             color={colors.warning}
           />
         </View>
 
-        {/* Empresas */}
-        {companies.length > 0 && (
+        {/* Empresas do snapshot filtradas */}
+        {filteredCompanies.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Suas Empresas
+              {selectedCompany ? "Empresa Selecionada" : "Suas Empresas"}
             </Text>
-            {companies.map((c) => (
+            {filteredCompanies.map((c) => (
               <View
                 key={c.companyId}
                 style={[styles.companyItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -194,13 +237,13 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Acessos */}
-        {access.length > 0 && (
+        {/* Acessos filtrados */}
+        {filteredAccess.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Seus Acessos
+              {selectedCompany ? `Acessos em ${selectedCompany.name}` : "Seus Acessos"}
             </Text>
-            {access.map((a, idx) => (
+            {filteredAccess.map((a, idx) => (
               <AccessCard
                 key={idx}
                 companyName={a.companyName}
@@ -208,6 +251,19 @@ export default function DashboardScreen() {
                 roleName={a.roleName}
               />
             ))}
+          </View>
+        )}
+
+        {/* Mensagem quando filtro não tem dados */}
+        {selectedCompany && filteredAccess.length === 0 && filteredCompanies.length === 0 && (
+          <View style={[styles.emptyFilter, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <IconSymbol name="building.fill" size={32} color={colors.muted} />
+            <Text style={[styles.emptyFilterTitle, { color: colors.foreground }]}>
+              Sem dados para esta empresa
+            </Text>
+            <Text style={[styles.emptyFilterSub, { color: colors.muted }]}>
+              Você não possui acessos em {selectedCompany.name}
+            </Text>
           </View>
         )}
 
@@ -234,6 +290,12 @@ export default function DashboardScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Modal do seletor de empresa */}
+      <CompanySelectorModal
+        visible={selectorVisible}
+        onClose={() => setSelectorVisible(false)}
+      />
     </ScreenContainer>
   );
 }
@@ -241,7 +303,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   content: {
     padding: 20,
-    gap: 20,
+    gap: 16,
     paddingBottom: 40,
   },
   header: {
@@ -259,6 +321,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  companySelectorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  companySelectorLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  companySelectorLabel: { fontSize: 13 },
+  filterBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  filterBannerText: { flex: 1, fontSize: 13 },
   profileCard: {
     borderRadius: 16,
     padding: 20,
@@ -355,6 +442,15 @@ const styles = StyleSheet.create({
   accessBadgeText: { fontSize: 12, fontWeight: "700" },
   accessRole: { fontSize: 14, fontWeight: "600" },
   accessCompany: { fontSize: 12 },
+  emptyFilter: {
+    padding: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: "center",
+    gap: 10,
+  },
+  emptyFilterTitle: { fontSize: 16, fontWeight: "700" },
+  emptyFilterSub: { fontSize: 13, textAlign: "center" },
   shortcuts: {
     flexDirection: "row",
     flexWrap: "wrap",

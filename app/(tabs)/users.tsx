@@ -12,12 +12,14 @@ import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { usersApi } from "@/lib/api";
 import { useColors } from "@/hooks/use-colors";
+import { useCompany } from "@/lib/company-context";
 import { ScreenContainer } from "@/components/screen-container";
 import { SearchBar } from "@/components/ui/search-bar";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FAB } from "@/components/ui/fab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { CompanySelectorButton, CompanySelectorModal } from "@/components/ui/company-selector";
 import type { User } from "@/lib/types/api";
 
 function UserAvatar({ name, size = 40 }: { name: string; size?: number }) {
@@ -73,8 +75,10 @@ function UserItem({ user, onPress }: { user: User; onPress: () => void }) {
 
 export default function UsersScreen() {
   const [search, setSearch] = useState("");
+  const [selectorVisible, setSelectorVisible] = useState(false);
   const router = useRouter();
   const colors = useColors();
+  const { selectedCompany } = useCompany();
 
   const { data: users = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["users", search],
@@ -95,11 +99,27 @@ export default function UsersScreen() {
     <ScreenContainer>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Usuários</Text>
-        <View style={[styles.countBadge, { backgroundColor: colors.primary + "15" }]}>
-          <Text style={[styles.countText, { color: colors.primary }]}>{users.length}</Text>
+        <View style={styles.headerLeft}>
+          <Text style={[styles.title, { color: colors.foreground }]}>Usuários</Text>
+          <View style={[styles.countBadge, { backgroundColor: colors.primary + "15" }]}>
+            <Text style={[styles.countText, { color: colors.primary }]}>{users.length}</Text>
+          </View>
         </View>
+        <CompanySelectorButton onPress={() => setSelectorVisible(true)} />
       </View>
+
+      {/* Filtro ativo — indicador visual */}
+      {selectedCompany && (
+        <View style={[styles.filterBar, { backgroundColor: colors.primary + "10", borderBottomColor: colors.primary + "20" }]}>
+          <IconSymbol name="building.fill" size={13} color={colors.primary} />
+          <Text style={[styles.filterBarText, { color: colors.primary }]} numberOfLines={1}>
+            Contexto: <Text style={{ fontWeight: "700" }}>{selectedCompany.name}</Text>
+          </Text>
+          <Text style={[styles.filterBarHint, { color: colors.primary + "99" }]}>
+            (ao criar usuário, será vinculado a esta empresa)
+          </Text>
+        </View>
+      )}
 
       {/* Busca */}
       <View style={styles.searchContainer}>
@@ -144,6 +164,11 @@ export default function UsersScreen() {
       )}
 
       <FAB onPress={() => router.push("/users/new" as never)} />
+
+      <CompanySelectorModal
+        visible={selectorVisible}
+        onClose={() => setSelectorVisible(false)}
+      />
     </ScreenContainer>
   );
 }
@@ -152,18 +177,35 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 0.5,
     gap: 10,
   },
-  title: { fontSize: 22, fontWeight: "700", flex: 1 },
+  headerLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  title: { fontSize: 22, fontWeight: "700" },
   countBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   countText: { fontSize: 13, fontWeight: "700" },
+  filterBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+    flexWrap: "wrap",
+  },
+  filterBarText: { fontSize: 12 },
+  filterBarHint: { fontSize: 11, fontStyle: "italic" },
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,

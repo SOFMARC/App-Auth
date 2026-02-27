@@ -11,6 +11,7 @@ import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { ToastProvider } from "@/lib/toast-context";
+import { CompanyProvider } from "@/lib/company-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   SafeAreaProvider,
@@ -102,6 +103,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <AuthProvider>
+              <CompanyProvider>
               <ToastProvider>
                 <AuthGuard>
                   <Stack screenOptions={{ headerShown: false }}>
@@ -112,6 +114,7 @@ export default function RootLayout() {
                 </AuthGuard>
                 <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
               </ToastProvider>
+              </CompanyProvider>
             </AuthProvider>
           </ThemeProvider>
         </QueryClientProvider>
