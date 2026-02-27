@@ -124,3 +124,13 @@
 - [x] Implementar serviço de logging no app (captura erros, navegação, ações críticas)
 - [x] Capturar crash/erros globais com ErrorBoundary
 - [x] Criar tela de Logs no app com filtros por nível, categoria e data
+
+## Bug: Crash de Abertura (ainda presente)
+- [x] Identificar causa raiz do crash na inicialização (pode ser import problemático em _layout, auth-context ou storage)
+- [x] Corrigir crash garantindo que o app abre na tela de login no Android
+
+## Melhoria: Logging apenas de Erros
+- [x] Filtrar logger para enviar ao Cloudflare apenas warn/error/fatal (remover debug/info)
+- [x] Remover logs de "App iniciado", "Login realizado", "Logout", "Navegou para" do envio remoto
+- [x] Garantir que erros de API (4xx/5xx) e crashes sejam enviados imediatamente
+- [x] Limpar chamadas de logger.info/debug desnecessárias no código

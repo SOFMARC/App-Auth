@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
+import { logger } from './logger';
 import { storage, STORAGE_KEYS, DEFAULT_API_URL } from './storage';
 import type {
   ApiResponse,
@@ -54,15 +55,38 @@ async function getApiInstance(): Promise<AxiosInstance> {
     return config;
   });
 
-  // Interceptor de response: trata 401 e 403
+  // Interceptor de response: trata 401/403 e loga erros remotamente
   apiInstance.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
-      if (error.response?.status === 401) {
+      const status = error.response?.status;
+      const method = error.config?.method?.toUpperCase() ?? 'UNKNOWN';
+      const url = error.config?.url ?? 'unknown';
+
+      if (status === 401) {
         // Limpar token e redirecionar para login
         await clearAuthData();
         onUnauthorized?.();
+        logger.warn('auth', `401 Unauthorized: ${method} ${url}`);
+      } else if (status === 403) {
+        logger.warn('permission', `403 Forbidden: ${method} ${url}`);
+      } else if (status && status >= 500) {
+        logger.error('api', `${status} Server Error: ${method} ${url}`, {
+          status,
+          data: error.response?.data,
+        });
+      } else if (status && status >= 400) {
+        logger.warn('api', `${status} Client Error: ${method} ${url}`, {
+          status,
+          data: error.response?.data,
+        });
+      } else if (!status) {
+        // Erro de rede (sem resposta)
+        logger.error('api', `Network error: ${method} ${url}`, {
+          message: error.message,
+        });
       }
+
       return Promise.reject(error);
     }
   );

@@ -132,7 +132,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       userId: String(data.user?.id ?? ''),
       userEmail: data.user?.email,
     });
-    logger.info('auth', 'Login realizado com sucesso', { email: data.user?.email });
     setState({
       isLoading: false,
       isAuthenticated: true,
@@ -146,7 +145,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    logger.info('auth', 'Logout realizado');
     clearLoggerUser();
     await authApi.logout();
     setState({

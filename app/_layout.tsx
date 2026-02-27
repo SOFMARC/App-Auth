@@ -41,7 +41,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     if (isLoading) return;
     const inAuthGroup = (segments as string[])[0] === "(auth)";
     if (!isAuthenticated && !inAuthGroup) {
-      router.replace("/" as never);
+      router.replace("/(auth)/login" as never);
     } else if (isAuthenticated && inAuthGroup) {
       router.replace("/(tabs)" as never);
     }
@@ -60,8 +60,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     initManusRuntime();
-    logger.info("general", "App iniciado", { platform: Platform.OS });
-    // Flush logs ao fechar o app
+    // Flush logs ao fechar o app (apenas erros são enviados)
     return () => { flushLogs(); };
   }, []);
 
@@ -113,6 +112,7 @@ export default function RootLayout() {
               <ToastProvider>
                 <AuthGuard>
                   <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="index" />
                     <Stack.Screen name="(auth)" />
                     <Stack.Screen name="(tabs)" />
                     <Stack.Screen name="oauth/callback" />
