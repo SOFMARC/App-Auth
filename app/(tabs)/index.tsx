@@ -1,48 +1,372 @@
-import { ScrollView, Text, View, TouchableOpacity } from "react-native";
-
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from "react-native";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { useToast } from "@/lib/toast-context";
+import { useColors } from "@/hooks/use-colors";
 import { ScreenContainer } from "@/components/screen-container";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 
-/**
- * Home Screen - NativeWind Example
- *
- * This template uses NativeWind (Tailwind CSS for React Native).
- * You can use familiar Tailwind classes directly in className props.
- *
- * Key patterns:
- * - Use `className` instead of `style` for most styling
- * - Theme colors: use tokens directly (bg-background, text-foreground, bg-primary, etc.); no dark: prefix needed
- * - Responsive: standard Tailwind breakpoints work on web
- * - Custom colors defined in tailwind.config.js
- */
-export default function HomeScreen() {
+function Avatar({ name, size = 48 }: { name: string; size?: number }) {
+  const colors = useColors();
+  const initials = name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
   return (
-    <ScreenContainer className="p-6">
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <View className="flex-1 gap-8">
-          {/* Hero Section */}
-          <View className="items-center gap-2">
-            <Text className="text-4xl font-bold text-foreground">Welcome</Text>
-            <Text className="text-base text-muted text-center">
-              Edit app/(tabs)/index.tsx to get started
+    <View
+      style={[
+        styles.avatar,
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.primary },
+      ]}
+    >
+      <Text style={[styles.avatarText, { fontSize: size * 0.38, color: "#fff" }]}>{initials}</Text>
+    </View>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: number | string;
+  icon: string;
+  color: string;
+}) {
+  const colors = useColors();
+  return (
+    <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={[styles.statIcon, { backgroundColor: color + "20" }]}>
+        <IconSymbol name={icon as never} size={20} color={color} />
+      </View>
+      <Text style={[styles.statValue, { color: colors.foreground }]}>{value}</Text>
+      <Text style={[styles.statLabel, { color: colors.muted }]}>{label}</Text>
+    </View>
+  );
+}
+
+function AccessCard({
+  companyName,
+  appKey,
+  roleName,
+}: {
+  companyName: string;
+  appKey: string;
+  roleName: string;
+}) {
+  const colors = useColors();
+  return (
+    <View style={[styles.accessCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={styles.accessRow}>
+        <View style={[styles.accessBadge, { backgroundColor: colors.primary + "15" }]}>
+          <Text style={[styles.accessBadgeText, { color: colors.primary }]}>{appKey}</Text>
+        </View>
+        <Text style={[styles.accessRole, { color: colors.foreground }]}>{roleName}</Text>
+      </View>
+      <Text style={[styles.accessCompany, { color: colors.muted }]}>{companyName}</Text>
+    </View>
+  );
+}
+
+export default function DashboardScreen() {
+  const { user, companies, access, logout, isMaster } = useAuth();
+  const { showError } = useToast();
+  const router = useRouter();
+  const colors = useColors();
+  const [refreshing, setRefreshing] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } catch (err) {
+      showError("Erro ao sair.");
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
+  async function onRefresh() {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 800);
+  }
+
+  const roles = user?.roles?.split(";").filter(Boolean) ?? [];
+
+  return (
+    <ScreenContainer>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.greeting, { color: colors.muted }]}>Bem-vindo,</Text>
+            <Text style={[styles.userName, { color: colors.foreground }]}>
+              {user?.nome ?? "Administrador"}
             </Text>
           </View>
+          <TouchableOpacity
+            style={[styles.logoutBtn, { backgroundColor: colors.error + "15" }]}
+            onPress={handleLogout}
+            disabled={loggingOut}
+            activeOpacity={0.7}
+          >
+            <IconSymbol name="arrow.right.square.fill" size={20} color={colors.error} />
+          </TouchableOpacity>
+        </View>
 
-          {/* Example Card */}
-          <View className="w-full max-w-sm self-center bg-surface rounded-2xl p-6 shadow-sm border border-border">
-            <Text className="text-lg font-semibold text-foreground mb-2">NativeWind Ready</Text>
-            <Text className="text-sm text-muted leading-relaxed">
-              Use Tailwind CSS classes directly in your React Native components.
-            </Text>
+        {/* Perfil */}
+        <View style={[styles.profileCard, { backgroundColor: colors.primary }]}>
+          <Avatar name={user?.nome ?? "A"} size={56} />
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{user?.nome}</Text>
+            <Text style={styles.profileEmail}>{user?.email}</Text>
+            <View style={styles.rolesRow}>
+              {roles.map((role) => (
+                <View key={role} style={styles.roleBadge}>
+                  <Text style={styles.roleBadgeText}>{role}</Text>
+                </View>
+              ))}
+            </View>
           </View>
+          {isMaster && (
+            <View style={styles.masterBadge}>
+              <IconSymbol name="shield.fill" size={14} color="#FFD700" />
+              <Text style={styles.masterBadgeText}>MASTER</Text>
+            </View>
+          )}
+        </View>
 
-          {/* Example Button */}
-          <View className="items-center">
-            <TouchableOpacity className="bg-primary px-6 py-3 rounded-full active:opacity-80">
-              <Text className="text-background font-semibold">Get Started</Text>
-            </TouchableOpacity>
+        {/* Stats rápidas */}
+        <View style={styles.statsRow}>
+          <StatCard
+            label="Empresas"
+            value={companies.length}
+            icon="building.2.fill"
+            color={colors.primary}
+          />
+          <StatCard
+            label="Acessos"
+            value={access.length}
+            icon="key.fill"
+            color={colors.success}
+          />
+          <StatCard
+            label="Apps"
+            value={[...new Set(access.map((a) => a.appKey))].length}
+            icon="square.grid.2x2.fill"
+            color={colors.warning}
+          />
+        </View>
+
+        {/* Empresas */}
+        {companies.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Suas Empresas
+            </Text>
+            {companies.map((c) => (
+              <View
+                key={c.companyId}
+                style={[styles.companyItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              >
+                <View style={[styles.companyIcon, { backgroundColor: colors.primary + "15" }]}>
+                  <IconSymbol name="building.fill" size={18} color={colors.primary} />
+                </View>
+                <Text style={[styles.companyName, { color: colors.foreground }]}>{c.name}</Text>
+                <Text style={[styles.companyId, { color: colors.muted }]}>ID: {c.companyId}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Acessos */}
+        {access.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Seus Acessos
+            </Text>
+            {access.map((a, idx) => (
+              <AccessCard
+                key={idx}
+                companyName={a.companyName}
+                appKey={a.appKey}
+                roleName={a.roleName}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Atalhos */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Gerenciar</Text>
+          <View style={styles.shortcuts}>
+            {[
+              { label: "Usuários", icon: "person.2.fill", tab: "/(tabs)/users", color: "#3B82F6" },
+              { label: "Empresas", icon: "building.2.fill", tab: "/(tabs)/companies", color: "#8B5CF6" },
+              { label: "Apps", icon: "square.grid.2x2.fill", tab: "/(tabs)/apps", color: "#F59E0B" },
+              { label: "Config", icon: "gearshape.fill", tab: "/(tabs)/settings", color: "#6B7280" },
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.label}
+                style={[styles.shortcut, { backgroundColor: item.color + "15", borderColor: item.color + "30" }]}
+                onPress={() => router.push(item.tab as never)}
+                activeOpacity={0.7}
+              >
+                <IconSymbol name={item.icon as never} size={26} color={item.color} />
+                <Text style={[styles.shortcutLabel, { color: item.color }]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
       </ScrollView>
     </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  content: {
+    padding: 20,
+    gap: 20,
+    paddingBottom: 40,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerLeft: { gap: 2 },
+  greeting: { fontSize: 13 },
+  userName: { fontSize: 22, fontWeight: "700" },
+  logoutBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileCard: {
+    borderRadius: 16,
+    padding: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    position: "relative",
+  },
+  avatar: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { fontWeight: "700" },
+  profileInfo: { flex: 1, gap: 4 },
+  profileName: { fontSize: 17, fontWeight: "700", color: "#fff" },
+  profileEmail: { fontSize: 12, color: "rgba(255,255,255,0.75)" },
+  rolesRow: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 4 },
+  roleBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  roleBadgeText: { color: "#fff", fontSize: 11, fontWeight: "600" },
+  masterBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  masterBadgeText: { color: "#FFD700", fontSize: 11, fontWeight: "700" },
+  statsRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 14,
+    padding: 14,
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+  },
+  statIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statValue: { fontSize: 20, fontWeight: "700" },
+  statLabel: { fontSize: 11, textAlign: "center" },
+  section: { gap: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: "700" },
+  companyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  companyIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  companyName: { flex: 1, fontSize: 15, fontWeight: "600" },
+  companyId: { fontSize: 12 },
+  accessCard: {
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 6,
+  },
+  accessRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  accessBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  accessBadgeText: { fontSize: 12, fontWeight: "700" },
+  accessRole: { fontSize: 14, fontWeight: "600" },
+  accessCompany: { fontSize: 12 },
+  shortcuts: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  shortcut: {
+    width: "47%",
+    borderRadius: 14,
+    padding: 16,
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+  },
+  shortcutLabel: { fontSize: 13, fontWeight: "600" },
+});

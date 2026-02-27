@@ -28,11 +28,11 @@ const schemeFromBundleId = `manus${timestamp}`;
 
 const env = {
   // App branding - update these values directly (do not use env vars)
-  appName: "IAM Admin Mobile App",
+  appName: "IAM Admin",
   appSlug: "iam-admin-app",
   // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
   // Leave empty to use the default icon from assets/images/icon.png
-  logoUrl: "",
+  logoUrl: "https://private-us-east-1.manuscdn.com/sessionFile/oF6oj0JE8OSlc1rKSChl6s/sandbox/I7u8l6UEMofVV7GGEn8aFR-img-1_1772166652000_na1fn_aWFtLWFkbWluLWljb24.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
