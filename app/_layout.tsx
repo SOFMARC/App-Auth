@@ -4,7 +4,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Platform } from "react-native";
+import { Platform, View, ActivityIndicator } from "react-native";
 import "react-native-reanimated";
 import "@/lib/_core/nativewind-pressable";
 
@@ -23,29 +23,55 @@ import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 import { trpc, createTRPCClient } from "@/lib/trpc";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { logger, flushLogs } from "@/lib/logger";
+import { flushLogs } from "@/lib/logger";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
 export const unstable_settings = {
-  anchor: "(tabs)",
+  // Âncora padrão — necessário para o Expo Router funcionar corretamente
+  anchor: "(auth)",
 };
 
+/**
+ * AuthGuard — controla a navegação baseada no estado de autenticação.
+ *
+ * Regras:
+ * - Enquanto isLoading=true: não navega (mostra loading)
+ * - Não autenticado + fora do grupo (auth): redireciona para login
+ * - Autenticado + dentro do grupo (auth): redireciona para tabs
+ */
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
+    // Aguardar a restauração da sessão antes de qualquer redirect
     if (isLoading) return;
-    const inAuthGroup = (segments as string[])[0] === "(auth)";
+
+    const firstSegment = (segments as string[])[0];
+    const inAuthGroup = firstSegment === "(auth)";
+    const inTabsGroup = firstSegment === "(tabs)";
+
     if (!isAuthenticated && !inAuthGroup) {
+      // Usuário não autenticado tentando acessar área protegida
       router.replace("/(auth)/login" as never);
     } else if (isAuthenticated && inAuthGroup) {
+      // Usuário autenticado na tela de login — redirecionar para o app
       router.replace("/(tabs)" as never);
     }
+    // Se já está no lugar certo, não faz nada
   }, [isAuthenticated, isLoading, segments]);
+
+  // Mostrar loading enquanto verifica a sessão salva
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#1A3A5C" }}>
+        <ActivityIndicator size="large" color="#ffffff" />
+      </View>
+    );
+  }
 
   return <>{children}</>;
 }
@@ -60,7 +86,6 @@ export default function RootLayout() {
 
   useEffect(() => {
     initManusRuntime();
-    // Flush logs ao fechar o app (apenas erros são enviados)
     return () => { flushLogs(); };
   }, []);
 
@@ -103,29 +128,41 @@ export default function RootLayout() {
 
   const content = (
     <ErrorBoundary>
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <AuthProvider>
-              <CompanyProvider>
-              <ToastProvider>
-                <AuthGuard>
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="index" />
-                    <Stack.Screen name="(auth)" />
-                    <Stack.Screen name="(tabs)" />
-                    <Stack.Screen name="oauth/callback" />
-                  </Stack>
-                </AuthGuard>
-                <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-              </ToastProvider>
-              </CompanyProvider>
-            </AuthProvider>
-          </ThemeProvider>
-        </QueryClientProvider>
-      </trpc.Provider>
-    </GestureHandlerRootView>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <trpc.Provider client={trpcClient} queryClient={queryClient}>
+          <QueryClientProvider client={queryClient}>
+            <ThemeProvider>
+              <AuthProvider>
+                <CompanyProvider>
+                  <ToastProvider>
+                    <AuthGuard>
+                      <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen name="index" />
+                        <Stack.Screen name="(auth)" />
+                        <Stack.Screen name="(tabs)" />
+                        <Stack.Screen name="settings-url" />
+                        <Stack.Screen name="users/[id]" />
+                        <Stack.Screen name="users/new" />
+                        <Stack.Screen name="users/[id]/edit" />
+                        <Stack.Screen name="users/[id]/permissions" />
+                        <Stack.Screen name="companies/[id]" />
+                        <Stack.Screen name="companies/new" />
+                        <Stack.Screen name="companies/[id]/edit" />
+                        <Stack.Screen name="apps/[id]" />
+                        <Stack.Screen name="apps/new" />
+                        <Stack.Screen name="apps/[id]/edit" />
+                        <Stack.Screen name="apps/[id]/roles" />
+                        <Stack.Screen name="oauth/callback" />
+                      </Stack>
+                    </AuthGuard>
+                    <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+                  </ToastProvider>
+                </CompanyProvider>
+              </AuthProvider>
+            </ThemeProvider>
+          </QueryClientProvider>
+        </trpc.Provider>
+      </GestureHandlerRootView>
     </ErrorBoundary>
   );
 

@@ -134,3 +134,9 @@
 - [x] Remover logs de "App iniciado", "Login realizado", "Logout", "Navegou para" do envio remoto
 - [x] Garantir que erros de API (4xx/5xx) e crashes sejam enviados imediatamente
 - [x] Limpar chamadas de logger.info/debug desnecessárias no código
+
+## Bug: Fluxo de Inicialização / Login
+- [x] Corrigir AuthGuard para não redirecionar enquanto isLoading=true
+- [x] Garantir que callback 401 não dispara durante restoreSession
+- [x] Garantir que app abre na tela de login quando não autenticado
+- [x] Mostrar splash/loading enquanto verifica sessão salva

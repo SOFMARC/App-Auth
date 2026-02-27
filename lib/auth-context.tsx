@@ -12,6 +12,7 @@ import { logger, setLoggerUser, clearLoggerUser } from './logger';
 import type { UserSnapshot, CompanySnapshot, AccessSnapshot, LoginDto } from './types/api';
 
 interface AuthState {
+  /** true enquanto está verificando o token salvo no storage */
   isLoading: boolean;
   isAuthenticated: boolean;
   token: string | null;
@@ -43,12 +44,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionExpiredMessage: null,
   });
 
+  // Flag para evitar que o callback 401 dispare durante a restauração da sessão
+  const isRestoringSession = useRef(true);
   const isHandlingUnauthorized = useRef(false);
 
-  // Registrar callback de 401 para forçar logout
+  // Registrar callback de 401 — só age depois que a sessão foi restaurada
   useEffect(() => {
     setUnauthorizedCallback(() => {
+      // Ignorar 401s que chegam durante a inicialização (ex: CompanyContext carregando)
+      if (isRestoringSession.current) return;
       if (isHandlingUnauthorized.current) return;
+
       isHandlingUnauthorized.current = true;
       clearLoggerUser();
       logger.warn('auth', 'Sessão expirada — token inválido (401)');
@@ -62,40 +68,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         access: [],
         sessionExpiredMessage: 'Sessão expirada, faça login novamente.',
       }));
-      isHandlingUnauthorized.current = false;
+      // Resetar após um tick para evitar loops
+      setTimeout(() => {
+        isHandlingUnauthorized.current = false;
+      }, 500);
     });
   }, []);
 
   // Restaurar sessão ao iniciar o app
   useEffect(() => {
     async function restoreSession() {
+      isRestoringSession.current = true;
       try {
         const token = await storage.getSecure(STORAGE_KEYS.AUTH_TOKEN);
         const expiresAt = await storage.getItem(STORAGE_KEYS.AUTH_EXPIRES);
+
+        if (!token || !expiresAt) {
+          // Sem sessão salva → ir para login
+          setState({
+            isLoading: false,
+            isAuthenticated: false,
+            token: null,
+            expiresAt: null,
+            user: null,
+            companies: [],
+            access: [],
+            sessionExpiredMessage: null,
+          });
+          return;
+        }
+
+        // Verificar se o token está expirado localmente
+        const expiry = new Date(expiresAt);
+        if (expiry <= new Date()) {
+          await clearAuthData();
+          setState({
+            isLoading: false,
+            isAuthenticated: false,
+            token: null,
+            expiresAt: null,
+            user: null,
+            companies: [],
+            access: [],
+            sessionExpiredMessage: 'Sessão expirada, faça login novamente.',
+          });
+          return;
+        }
+
+        // Token válido — restaurar dados do usuário
         const userStr = await storage.getItem(STORAGE_KEYS.AUTH_USER);
         const companiesStr = await storage.getItem(STORAGE_KEYS.AUTH_COMPANIES);
         const accessStr = await storage.getItem(STORAGE_KEYS.AUTH_ACCESS);
 
-        if (!token || !expiresAt) {
-          setState((prev) => ({ ...prev, isLoading: false }));
-          return;
-        }
-
-        // Verificar se o token está expirado
-        const expiry = new Date(expiresAt);
-        if (expiry <= new Date()) {
-          await clearAuthData();
-          setState((prev) => ({
-            ...prev,
-            isLoading: false,
-            sessionExpiredMessage: 'Sessão expirada, faça login novamente.',
-          }));
-          return;
-        }
-
         const user = userStr ? (JSON.parse(userStr) as UserSnapshot) : null;
         const companies = companiesStr ? (JSON.parse(companiesStr) as CompanySnapshot[]) : [];
         const access = accessStr ? (JSON.parse(accessStr) as AccessSnapshot[]) : [];
+
+        if (user) {
+          setLoggerUser({
+            userId: String(user.id ?? ''),
+            userEmail: user.email,
+          });
+        }
 
         setState({
           isLoading: false,
@@ -107,9 +141,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           access,
           sessionExpiredMessage: null,
         });
-      } catch {
+      } catch (err) {
+        // Erro ao ler storage — limpar e ir para login
+        logger.captureError('auth', err, { context: 'restoreSession' });
         await clearAuthData();
-        setState((prev) => ({ ...prev, isLoading: false }));
+        setState({
+          isLoading: false,
+          isAuthenticated: false,
+          token: null,
+          expiresAt: null,
+          user: null,
+          companies: [],
+          access: [],
+          sessionExpiredMessage: null,
+        });
+      } finally {
+        // Liberar o guard após a restauração completa
+        setTimeout(() => {
+          isRestoringSession.current = false;
+        }, 300);
       }
     }
 
@@ -132,6 +182,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       userId: String(data.user?.id ?? ''),
       userEmail: data.user?.email,
     });
+
+    isRestoringSession.current = false;
+
     setState({
       isLoading: false,
       isAuthenticated: true,
@@ -146,17 +199,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     clearLoggerUser();
-    await authApi.logout();
-    setState({
-      isLoading: false,
-      isAuthenticated: false,
-      token: null,
-      expiresAt: null,
-      user: null,
-      companies: [],
-      access: [],
-      sessionExpiredMessage: null,
-    });
+    isRestoringSession.current = true;
+    try {
+      await authApi.logout();
+    } catch {
+      // Ignorar erros de logout (token pode já estar inválido)
+    } finally {
+      await clearAuthData();
+      setState({
+        isLoading: false,
+        isAuthenticated: false,
+        token: null,
+        expiresAt: null,
+        user: null,
+        companies: [],
+        access: [],
+        sessionExpiredMessage: null,
+      });
+      setTimeout(() => {
+        isRestoringSession.current = false;
+      }, 300);
+    }
   }, []);
 
   const clearSessionMessage = useCallback(() => {
