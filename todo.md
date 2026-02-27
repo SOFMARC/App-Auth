@@ -157,3 +157,39 @@
 - [x] Integrar endpoint /api/access/me para restaurar estado de acesso pós-login
 - [x] Integrar endpoint /api/access/me/for para verificar acesso por empresa+app
 - [x] Garantir que nenhum provider faz chamada à API antes do token estar disponível (CompanyProvider movido para dentro do AuthGuard)
+
+## Bug: Campos Reais da API (Teste com Credenciais Reais)
+
+- [ ] Corrigir User: API retorna `nome` mas tipos usam `name` — mapear `nome→name` no api.ts
+- [ ] Corrigir User: API retorna `dataCriacao` mas tipos usam `createdAt` — mapear no api.ts
+- [ ] Corrigir User: API retorna `ultimoLogin` mas tipos usam `lastLogin` — mapear no api.ts
+- [ ] Corrigir CreateUser: DTO usa `name` mas API espera `nome` — mapear no api.ts
+- [ ] Corrigir UpdateUser: DTO usa `name` mas API espera `nome` — mapear no api.ts
+- [ ] Corrigir Permissões: não existe GET /api/admin/iam/users/{id}/access — remover listagem ou usar /api/access/me
+- [ ] Corrigir Permissões: GrantAccessDto usa `roleKey` (string), não `appRoleId` (int) — corrigir payload
+- [ ] Corrigir Permissões: RevokeAccessDto usa `appKey` (string), não `appId` (int) — corrigir payload
+- [ ] Corrigir tela de usuários: campos `nome`, `dataCriacao`, `ultimoLogin` devem ser exibidos corretamente
+
+## Resultado do Teste Completo com Credenciais Reais
+
+- [x] Login JWT — ✅ funcionando
+- [x] GET /api/Auth/me — ✅ funcionando
+- [x] GET /api/access/me — ✅ funcionando
+- [x] GET /api/access/me/for — ✅ funcionando
+- [x] GET /api/admin/users — ✅ funcionando (campos: id, nome, email, ativo, dataCriacao, ultimoLogin, roles)
+- [x] POST /api/admin/users — ✅ funcionando
+- [ ] PUT /api/admin/users/{id} — ❌ HTTP 405 (Method Not Allowed) — PROBLEMA NA API
+- [x] PATCH /api/admin/users/{id}/status — ✅ funcionando
+- [x] POST /api/admin/users/{id}/reset-password — ✅ funcionando
+- [x] GET /api/admin/iam/companies — ✅ funcionando (campos: companyId, name, ativo)
+- [x] GET /api/admin/iam/companies/{id} — ✅ funcionando
+- [x] POST /api/admin/iam/companies — ✅ funcionando
+- [ ] PUT /api/admin/iam/companies/{id} — ❌ HTTP 405 (Method Not Allowed) — PROBLEMA NA API
+- [x] PATCH /api/admin/iam/companies/{id}/status — ✅ funcionando
+- [x] GET /api/admin/iam/apps — ✅ funcionando (campos: appId, key, name, ativo)
+- [x] GET /api/admin/iam/apps/{id} — ✅ funcionando
+- [x] POST /api/admin/iam/apps — ✅ funcionando
+- [x] GET /api/admin/iam/apps/{id}/roles — ✅ funcionando (campos: appRoleId, appId, key, name, ativo)
+- [x] POST /api/admin/iam/apps/{id}/roles — ✅ funcionando
+- [x] POST /api/admin/iam/access/grant — ✅ funcionando
+- [x] POST /api/admin/iam/access/revoke — ✅ funcionando

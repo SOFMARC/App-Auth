@@ -202,29 +202,35 @@ export const usersApi = {
     if (filter?.take !== undefined) params.take = filter.take;
     const res = await api.get<ApiResponse<User[]>>('/api/admin/users', { params });
     const raw = res.data.data ?? (res.data as unknown as User[]) ?? [];
-    // API returns 'roles' field, app uses 'globalRoles'
-    return raw.map((u: User & { roles?: string }) => ({ ...u, globalRoles: u.globalRoles ?? u.roles ?? null }));
+    // Normalize: API returns 'roles' field, type uses 'globalRoles'
+    return raw.map((u: User & { roles?: string }) => ({
+      ...u,
+      globalRoles: u.globalRoles ?? u.roles ?? null,
+    }));
   },
 
   async get(id: number): Promise<User> {
     const api = await getApiInstance();
     const res = await api.get<ApiResponse<User>>(`/api/admin/users/${id}`);
-    const u = res.data.data ?? (res.data as unknown as User);
-    return { ...u, globalRoles: u.globalRoles ?? (u as User & { roles?: string }).roles ?? null };
+    const raw = res.data.data ?? (res.data as unknown as User);
+    const u = raw as User & { roles?: string };
+    return { ...u, globalRoles: u.globalRoles ?? u.roles ?? null };
   },
 
   async create(dto: CreateUserDto): Promise<User> {
     const api = await getApiInstance();
     const res = await api.post<ApiResponse<User>>('/api/admin/users', dto);
-    const u = res.data.data ?? (res.data as unknown as User);
-    return { ...u, globalRoles: u.globalRoles ?? (u as User & { roles?: string }).roles ?? null };
+    const raw = res.data.data ?? (res.data as unknown as User);
+    const u = raw as User & { roles?: string };
+    return { ...u, globalRoles: u.globalRoles ?? u.roles ?? null };
   },
 
   async update(id: number, dto: UpdateUserDto): Promise<User> {
     const api = await getApiInstance();
     const res = await api.put<ApiResponse<User>>(`/api/admin/users/${id}`, dto);
-    const u = res.data.data ?? (res.data as unknown as User);
-    return { ...u, globalRoles: u.globalRoles ?? (u as User & { roles?: string }).roles ?? null };
+    const raw = res.data.data ?? (res.data as unknown as User);
+    const u = raw as User & { roles?: string };
+    return { ...u, globalRoles: u.globalRoles ?? u.roles ?? null };
   },
 
   async setStatus(id: number, active: boolean): Promise<void> {
@@ -382,19 +388,11 @@ export const iamApi = {
     await api.post('/api/admin/iam/access/revoke', dto);
   },
 
-  async getUserAccess(userId: number): Promise<UserAccess[]> {
-    // Usa o endpoint de access/me/for ou busca via snapshot
-    // Como não há endpoint direto GET /api/admin/iam/user/{userId},
-    // usamos o endpoint de acesso do usuário via admin
-    const api = await getApiInstance();
-    try {
-      const res = await api.get<ApiResponse<UserAccess[]>>(
-        `/api/admin/iam/users/${userId}/access`
-      );
-      return res.data.data ?? (res.data as unknown as UserAccess[]) ?? [];
-    } catch {
-      return [];
-    }
+  async getUserAccess(_userId: number): Promise<UserAccess[]> {
+    // Não existe endpoint GET /api/admin/iam/users/{id}/access na API.
+    // A listagem de acessos de um usuário específico não está disponível via admin.
+    // Retorna array vazio — a tela de permissões usa grant/revoke diretamente.
+    return [];
   },
 };
 
