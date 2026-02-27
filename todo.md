@@ -205,3 +205,10 @@
 - [x] Log de erros de rede (timeout, connection refused)
 - [x] Log de erros não tratados (unhandledRejection, uncaughtException)
 - [x] Tela de Logs mostra logs de inicialização (categoria INIT)
+
+## Diagnóstico: Crash Nativo Android
+- [x] Implementar GlobalErrorHandler do Expo para capturar erros JS não tratados antes do React montar
+- [x] Adicionar verificação de módulos nativos no startup (Platform.OS, versões)
+- [x] Enviar log de diagnóstico imediatamente ao montar o primeiro componente nativo
+- [x] Criar tela de diagnóstico nativo acessível sem autenticação (/diagnostic)
+- [x] Adicionar try/catch em torno de todos os imports de módulos nativos críticos

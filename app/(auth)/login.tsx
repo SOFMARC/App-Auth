@@ -160,6 +160,17 @@ export default function LoginScreen() {
                 Configurar URL da API
               </Text>
             </TouchableOpacity>
+
+            {/* Link de diagnóstico nativo */}
+            <TouchableOpacity
+              style={styles.settingsLink}
+              onPress={() => router.push("/diagnostic" as never)}
+            >
+              <IconSymbol name="info.circle.fill" size={14} color={colors.muted} />
+              <Text style={[styles.settingsLinkText, { color: colors.muted }]}>
+                Diagnóstico do Dispositivo
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -1,4 +1,6 @@
 import "@/global.css";
+// PRIMEIRO import — instala handlers de crash antes de qualquer React
+import "@/lib/native-crash-reporter";
 import { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -119,6 +121,7 @@ export default function RootLayout() {
                     <Stack.Screen name="apps/[id]/edit" />
                     <Stack.Screen name="apps/[id]/roles" />
                     <Stack.Screen name="oauth/callback" />
+                    <Stack.Screen name="diagnostic" />
                   </Stack>
                 </AuthGuard>
                 <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
