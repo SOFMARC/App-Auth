@@ -175,25 +175,30 @@ export const usersApi = {
     if (filter?.skip !== undefined) params.skip = filter.skip;
     if (filter?.take !== undefined) params.take = filter.take;
     const res = await api.get<ApiResponse<User[]>>('/api/admin/users', { params });
-    return res.data.data ?? (res.data as unknown as User[]) ?? [];
+    const raw = res.data.data ?? (res.data as unknown as User[]) ?? [];
+    // API returns 'roles' field, app uses 'globalRoles'
+    return raw.map((u: User & { roles?: string }) => ({ ...u, globalRoles: u.globalRoles ?? u.roles ?? null }));
   },
 
   async get(id: number): Promise<User> {
     const api = await getApiInstance();
     const res = await api.get<ApiResponse<User>>(`/api/admin/users/${id}`);
-    return res.data.data ?? (res.data as unknown as User);
+    const u = res.data.data ?? (res.data as unknown as User);
+    return { ...u, globalRoles: u.globalRoles ?? (u as User & { roles?: string }).roles ?? null };
   },
 
   async create(dto: CreateUserDto): Promise<User> {
     const api = await getApiInstance();
     const res = await api.post<ApiResponse<User>>('/api/admin/users', dto);
-    return res.data.data ?? (res.data as unknown as User);
+    const u = res.data.data ?? (res.data as unknown as User);
+    return { ...u, globalRoles: u.globalRoles ?? (u as User & { roles?: string }).roles ?? null };
   },
 
   async update(id: number, dto: UpdateUserDto): Promise<User> {
     const api = await getApiInstance();
     const res = await api.put<ApiResponse<User>>(`/api/admin/users/${id}`, dto);
-    return res.data.data ?? (res.data as unknown as User);
+    const u = res.data.data ?? (res.data as unknown as User);
+    return { ...u, globalRoles: u.globalRoles ?? (u as User & { roles?: string }).roles ?? null };
   },
 
   async setStatus(id: number, active: boolean): Promise<void> {
@@ -216,25 +221,30 @@ export const companiesApi = {
     const params: Record<string, unknown> = {};
     if (filter?.q) params.q = filter.q;
     const res = await api.get<ApiResponse<Company[]>>('/api/admin/iam/companies', { params });
-    return res.data.data ?? (res.data as unknown as Company[]) ?? [];
+    const raw = res.data.data ?? (res.data as unknown as Company[]) ?? [];
+    // API returns 'companyId' field, app uses 'id'
+    return raw.map((c: Company & { companyId?: number }) => ({ ...c, id: c.id ?? c.companyId ?? 0 }));
   },
 
   async get(id: number): Promise<Company> {
     const api = await getApiInstance();
     const res = await api.get<ApiResponse<Company>>(`/api/admin/iam/companies/${id}`);
-    return res.data.data ?? (res.data as unknown as Company);
+    const c = res.data.data ?? (res.data as unknown as Company);
+    return { ...c, id: c.id ?? (c as Company & { companyId?: number }).companyId ?? 0 };
   },
 
   async create(dto: UpsertCompanyDto): Promise<Company> {
     const api = await getApiInstance();
     const res = await api.post<ApiResponse<Company>>('/api/admin/iam/companies', dto);
-    return res.data.data ?? (res.data as unknown as Company);
+    const c = res.data.data ?? (res.data as unknown as Company);
+    return { ...c, id: c.id ?? (c as Company & { companyId?: number }).companyId ?? 0 };
   },
 
   async update(id: number, dto: UpsertCompanyDto): Promise<Company> {
     const api = await getApiInstance();
     const res = await api.put<ApiResponse<Company>>(`/api/admin/iam/companies/${id}`, dto);
-    return res.data.data ?? (res.data as unknown as Company);
+    const c = res.data.data ?? (res.data as unknown as Company);
+    return { ...c, id: c.id ?? (c as Company & { companyId?: number }).companyId ?? 0 };
   },
 
   async setStatus(id: number, active: boolean): Promise<void> {
@@ -262,25 +272,30 @@ export const appsApi = {
     const params: Record<string, unknown> = {};
     if (filter?.q) params.q = filter.q;
     const res = await api.get<ApiResponse<App[]>>('/api/admin/iam/apps', { params });
-    return res.data.data ?? (res.data as unknown as App[]) ?? [];
+    const raw = res.data.data ?? (res.data as unknown as App[]) ?? [];
+    // API returns 'appId' field, app uses 'id'
+    return raw.map((a: App & { appId?: number }) => ({ ...a, id: a.id ?? a.appId ?? 0 }));
   },
 
   async get(id: number): Promise<App> {
     const api = await getApiInstance();
     const res = await api.get<ApiResponse<App>>(`/api/admin/iam/apps/${id}`);
-    return res.data.data ?? (res.data as unknown as App);
+    const a = res.data.data ?? (res.data as unknown as App);
+    return { ...a, id: a.id ?? (a as App & { appId?: number }).appId ?? 0 };
   },
 
   async create(dto: UpsertAppDto): Promise<App> {
     const api = await getApiInstance();
     const res = await api.post<ApiResponse<App>>('/api/admin/iam/apps', dto);
-    return res.data.data ?? (res.data as unknown as App);
+    const a = res.data.data ?? (res.data as unknown as App);
+    return { ...a, id: a.id ?? (a as App & { appId?: number }).appId ?? 0 };
   },
 
   async update(id: number, dto: UpsertAppDto): Promise<App> {
     const api = await getApiInstance();
     const res = await api.put<ApiResponse<App>>(`/api/admin/iam/apps/${id}`, dto);
-    return res.data.data ?? (res.data as unknown as App);
+    const a = res.data.data ?? (res.data as unknown as App);
+    return { ...a, id: a.id ?? (a as App & { appId?: number }).appId ?? 0 };
   },
 
   async setStatus(id: number, active: boolean): Promise<void> {

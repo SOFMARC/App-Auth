@@ -146,3 +146,8 @@
 - [x] Identificar import nativo que causa crash no bundle Android (react-native-worklets/plugin no babel.config.js + expo-video/expo-audio plugins desnecessários + trpc provider)
 - [x] Remover/substituir todos os imports problemáticos (removidos: worklets plugin, expo-video, expo-audio, trpc.Provider)
 - [x] Garantir que logs de erro chegam ao Cloudflare D1 (worker funcionando, CORS ok, logs enviados imediatamente)
+
+## Bug: Mapeamento de Campos da API
+- [x] Corrigir App: API retorna appId, app usa .id — mapear no api.ts
+- [x] Corrigir Company: API retorna companyId, app usa .id — mapear no api.ts
+- [x] Corrigir User: API retorna roles, app usa globalRoles — mapear no api.ts
