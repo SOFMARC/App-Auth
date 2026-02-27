@@ -8,32 +8,21 @@ import React, {
 import { storage } from "./storage";
 import { accessApi, companiesApi } from "./api";
 import { useAuth } from "./auth-context";
+import { logger } from "./logger";
 import type { Company } from "./types/api";
 
 const SELECTED_COMPANY_KEY = "iam_selected_company_id";
 
 interface CompanyContextValue {
-  /** Empresa atualmente selecionada (null = todas) */
   selectedCompany: Company | null;
-  /** Lista completa de empresas do usuário autenticado */
   companies: Company[];
-  /** Está carregando a lista de empresas */
   isLoading: boolean;
-  /** Selecionar uma empresa específica */
   selectCompany: (company: Company | null) => void;
-  /** Recarregar lista de empresas */
   refresh: () => Promise<void>;
 }
 
 const CompanyContext = createContext<CompanyContextValue | null>(null);
 
-/**
- * CompanyProvider — gerencia a empresa selecionada globalmente.
- *
- * IMPORTANTE: Só carrega dados da API quando o usuário está autenticado.
- * Usa /api/access/me para obter as empresas do usuário (não requer admin).
- * Fallback para /api/admin/iam/companies se o usuário for MASTER.
- */
 export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isMaster } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -41,61 +30,67 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const loadCompanies = useCallback(async () => {
-    // Nunca chamar a API sem autenticação
     if (!isAuthenticated) {
+      logger.info('init', '[COMPANY] Não autenticado — ignorando loadCompanies');
       setCompanies([]);
       setSelectedCompany(null);
       return;
     }
 
+    logger.info('init', `[COMPANY] Carregando empresas — isMaster=${isMaster}`);
     setIsLoading(true);
     try {
       let list: Company[] = [];
 
       if (isMaster) {
-        // MASTER pode ver todas as empresas via endpoint admin
+        logger.info('init', '[COMPANY] Chamando companiesApi.list() (MASTER)...');
         const adminList = await companiesApi.list();
         list = adminList;
+        logger.info('init', `[COMPANY] companiesApi.list() retornou ${list.length} empresas`);
       } else {
-        // Usuário comum: buscar apenas as empresas às quais tem acesso
+        logger.info('init', '[COMPANY] Chamando accessApi.me() (usuário comum)...');
         const accessData = await accessApi.me();
         list = accessData.companies.map((c) => ({
           id: c.companyId,
           name: c.name,
           ativo: true,
         }));
+        logger.info('init', `[COMPANY] accessApi.me() retornou ${list.length} empresas`);
       }
 
       setCompanies(list);
 
-      // Restaurar empresa selecionada do storage
       const savedId = await storage.getItem(SELECTED_COMPANY_KEY);
       if (savedId) {
         const found = list.find((c) => String(c.id) === savedId);
         if (found) {
           setSelectedCompany(found);
+          logger.info('init', `[COMPANY] Empresa restaurada do storage: ${found.name}`);
         } else if (list.length > 0) {
-          // ID salvo não existe mais — selecionar a primeira
           setSelectedCompany(list[0]);
+          logger.info('init', `[COMPANY] Empresa salva não encontrada — selecionando primeira: ${list[0].name}`);
         }
       } else if (list.length === 1) {
-        // Só uma empresa disponível — selecionar automaticamente
         setSelectedCompany(list[0]);
+        logger.info('init', `[COMPANY] Única empresa — selecionada automaticamente: ${list[0].name}`);
+      } else {
+        logger.info('init', `[COMPANY] ${list.length} empresas disponíveis — nenhuma pré-selecionada`);
       }
-    } catch {
-      // Silencioso — não travar o app se falhar
+    } catch (err) {
+      logger.captureError('company', err, { context: 'loadCompanies', isAuthenticated, isMaster });
+      logger.error('company', `[COMPANY] ERRO ao carregar empresas: ${err instanceof Error ? err.message : String(err)}`);
       setCompanies([]);
     } finally {
       setIsLoading(false);
     }
   }, [isAuthenticated, isMaster]);
 
-  // Carregar empresas apenas quando autenticado
   useEffect(() => {
     if (isAuthenticated) {
+      logger.info('init', '[COMPANY] isAuthenticated=true → chamando loadCompanies');
       loadCompanies();
     } else {
-      // Limpar estado ao deslogar
+      logger.info('init', '[COMPANY] isAuthenticated=false → limpando estado');
       setCompanies([]);
       setSelectedCompany(null);
     }
@@ -105,8 +100,10 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     setSelectedCompany(company);
     if (company) {
       await storage.setItem(SELECTED_COMPANY_KEY, String(company.id));
+      logger.info('company', `Empresa selecionada: ${company.name} (id=${company.id})`);
     } else {
       await storage.removeItem(SELECTED_COMPANY_KEY);
+      logger.info('company', 'Seleção de empresa limpa');
     }
   }, []);
 

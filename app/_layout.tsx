@@ -14,7 +14,10 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SafeAreaProvider, initialWindowMetrics } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { flushLogs } from "@/lib/logger";
+import { logger } from "@/lib/logger";
+
+// Log imediato ao carregar o módulo (antes de qualquer React)
+logger.info('init', `[LAYOUT] Módulo _layout.tsx carregado — plataforma: ${Platform.OS}`);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,37 +33,32 @@ export const unstable_settings = {
   anchor: "(auth)",
 };
 
-/**
- * AuthGuard — controla a navegação baseada no estado de autenticação.
- *
- * Regras:
- * - Enquanto isLoading=true: mostra tela de carregamento, não navega
- * - Não autenticado + fora do grupo (auth): redireciona para login
- * - Autenticado + dentro do grupo (auth): redireciona para tabs
- *
- * IMPORTANTE: CompanyProvider fica DENTRO do AuthGuard para garantir que
- * nunca chame a API antes do token estar disponível.
- */
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
+    logger.info('init', `[AUTHGUARD] Estado: isLoading=${isLoading} isAuthenticated=${isAuthenticated} segments=${JSON.stringify(segments)}`);
+
     if (isLoading) return;
 
     const firstSegment = (segments as string[])[0];
     const inAuthGroup = firstSegment === "(auth)";
 
     if (!isAuthenticated && !inAuthGroup) {
+      logger.info('init', '[AUTHGUARD] Redirecionando para /(auth)/login');
       router.replace("/(auth)/login" as never);
     } else if (isAuthenticated && inAuthGroup) {
+      logger.info('init', '[AUTHGUARD] Redirecionando para /(tabs)');
       router.replace("/(tabs)" as never);
+    } else {
+      logger.info('init', `[AUTHGUARD] Sem redirecionamento necessário — inAuthGroup=${inAuthGroup}`);
     }
   }, [isAuthenticated, isLoading, segments]);
 
-  // Mostrar loading enquanto verifica a sessão salva
   if (isLoading) {
+    logger.info('init', '[AUTHGUARD] Exibindo tela de loading...');
     return (
       <View
         style={{
@@ -75,8 +73,8 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // CompanyProvider só monta aqui — APÓS isLoading=false e com token disponível
-  // Isso garante que nunca chamará a API sem autenticação
+  logger.info('init', '[AUTHGUARD] Montando CompanyProvider + ToastProvider + children');
+
   return (
     <CompanyProvider>
       <ToastProvider>
@@ -90,8 +88,9 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
+    logger.info('init', '[ROOT] RootLayout montado com sucesso');
     return () => {
-      flushLogs();
+      logger.info('init', '[ROOT] RootLayout desmontado');
     };
   }, []);
 

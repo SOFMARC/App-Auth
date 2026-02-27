@@ -1,11 +1,10 @@
 /**
  * IAM Admin — Serviço de Logging Remoto
  *
- * Regras:
- * - Apenas níveis warn, error e fatal são enviados ao Cloudflare D1
- * - debug e info ficam apenas no console local (desenvolvimento)
- * - Erros são enviados imediatamente (sem batching)
- * - Falhas de envio são silenciosas para não impactar a UI
+ * MODO DIAGNÓSTICO ATIVO:
+ * - Todos os níveis (debug, info, warn, error, fatal) são enviados ao Cloudflare D1
+ * - Isso permite rastrear exatamente onde o app trava no dispositivo
+ * - Após resolver o crash, remover debug/info do envio remoto
  */
 import { Platform } from "react-native";
 import Constants from "expo-constants";
@@ -22,6 +21,7 @@ export type LogCategory =
   | "user"
   | "company"
   | "app"
+  | "init"
   | "general";
 
 export interface LogEntry {
@@ -52,9 +52,6 @@ let _companyName: string | undefined;
 const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
 const PLATFORM = Platform.OS;
 
-// Níveis que são enviados remotamente
-const REMOTE_LEVELS: LogLevel[] = ["warn", "error", "fatal"];
-
 /** Define o contexto do usuário atual para todos os logs subsequentes */
 export function setLoggerUser(opts: {
   userId?: string;
@@ -76,7 +73,7 @@ export function clearLoggerUser() {
   _companyName = undefined;
 }
 
-/** Envia um único log para o Cloudflare Worker (apenas warn/error/fatal) */
+/** Envia um único log para o Cloudflare Worker — imediato, sem fila */
 async function sendRemote(entry: RemoteLog): Promise<void> {
   try {
     await fetch(LOGS_WORKER_URL, {
@@ -89,12 +86,12 @@ async function sendRemote(entry: RemoteLog): Promise<void> {
   }
 }
 
-/** Registra um log. Apenas warn/error/fatal são enviados ao Cloudflare. */
+/** Registra um log e envia TODOS os níveis ao Cloudflare (modo diagnóstico) */
 export function log(entry: LogEntry): void {
   const isDev =
     typeof __DEV__ !== "undefined" ? __DEV__ : process.env.NODE_ENV !== "production";
 
-  // Console local em desenvolvimento
+  // Console local sempre
   if (isDev) {
     const prefix = `[${entry.level.toUpperCase()}][${entry.category}]`;
     if (entry.level === "error" || entry.level === "fatal") {
@@ -102,15 +99,11 @@ export function log(entry: LogEntry): void {
     } else if (entry.level === "warn") {
       console.warn(prefix, entry.message, entry.metadata ?? "");
     } else {
-      // debug/info: apenas console, nunca remoto
       console.log(prefix, entry.message, entry.metadata ?? "");
-      return; // Sai aqui — não envia remotamente
     }
   }
 
-  // Envio remoto apenas para warn, error e fatal
-  if (!REMOTE_LEVELS.includes(entry.level)) return;
-
+  // MODO DIAGNÓSTICO: enviar TODOS os níveis remotamente
   const remote: RemoteLog = {
     ...entry,
     user_id: entry.user_id ?? _userId,
@@ -122,34 +115,29 @@ export function log(entry: LogEntry): void {
     created_at: entry.created_at ?? new Date().toISOString(),
   };
 
-  // Envio imediato — sem batching para não perder erros
+  // Envio imediato — sem batching para não perder nenhum log de crash
   sendRemote(remote);
 }
 
-/** Flush manual (compatibilidade — não faz nada pois não há fila) */
+/** Flush manual (compatibilidade) */
 export async function flushLogs(): Promise<void> {
   // Sem fila — cada log é enviado imediatamente
 }
 
 // Atalhos convenientes
 export const logger = {
-  /** Apenas console local, nunca enviado remotamente */
   debug: (category: LogCategory, message: string, metadata?: Record<string, unknown>) =>
     log({ level: "debug", category, message, metadata }),
 
-  /** Apenas console local, nunca enviado remotamente */
   info: (category: LogCategory, message: string, metadata?: Record<string, unknown>) =>
     log({ level: "info", category, message, metadata }),
 
-  /** Enviado ao Cloudflare D1 */
   warn: (category: LogCategory, message: string, metadata?: Record<string, unknown>) =>
     log({ level: "warn", category, message, metadata }),
 
-  /** Enviado ao Cloudflare D1 imediatamente */
   error: (category: LogCategory, message: string, metadata?: Record<string, unknown>) =>
     log({ level: "error", category, message, metadata }),
 
-  /** Enviado ao Cloudflare D1 imediatamente */
   fatal: (category: LogCategory, message: string, metadata?: Record<string, unknown>) =>
     log({ level: "fatal", category, message, metadata }),
 
@@ -172,14 +160,12 @@ export const logger = {
     });
   },
 
-  /** Log de navegação — apenas local, não enviado */
+  /** Log de navegação — enviado remotamente no modo diagnóstico */
   screen: (screenName: string) => {
-    const isDev =
-      typeof __DEV__ !== "undefined" ? __DEV__ : process.env.NODE_ENV !== "production";
-    if (isDev) console.log(`[INFO][navigation] Navegou para ${screenName}`);
+    log({ level: "info", category: "navigation", message: `Navegou para: ${screenName}` });
   },
 
-  /** Log de chamada de API — apenas erros 4xx/5xx são enviados remotamente */
+  /** Log de chamada de API — todos os erros 4xx/5xx são enviados remotamente */
   apiCall: (method: string, endpoint: string, status: number, durationMs?: number) => {
     const level: LogLevel = status >= 500 ? "error" : status >= 400 ? "warn" : "info";
     log({

@@ -193,3 +193,15 @@
 - [x] POST /api/admin/iam/apps/{id}/roles — ✅ funcionando
 - [x] POST /api/admin/iam/access/grant — ✅ funcionando
 - [x] POST /api/admin/iam/access/revoke — ✅ funcionando
+
+## Diagnóstico: Logs de Inicialização
+
+- [x] Logger envia imediatamente (sem batch) para Cloudflare D1
+- [x] Log no primeiro render do app (app/index.tsx)
+- [x] Log em cada etapa do AuthContext (início restore, token encontrado/não encontrado, fim restore)
+- [x] Log em cada etapa do CompanyContext (início load, sucesso, erro)
+- [x] Log em cada etapa do AuthGuard (isLoading, isAuthenticated, redirect)
+- [x] Log de TODOS os erros de API (qualquer status != 2xx)
+- [x] Log de erros de rede (timeout, connection refused)
+- [x] Log de erros não tratados (unhandledRejection, uncaughtException)
+- [x] Tela de Logs mostra logs de inicialização (categoria INIT)

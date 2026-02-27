@@ -57,7 +57,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               O erro foi registrado automaticamente. Tente novamente.
             </Text>
 
-            {__DEV__ && this.state.error && (
+            {this.state.error && (
               <ScrollView style={styles.errorBox}>
                 <Text style={styles.errorText}>
                   {this.state.error.message}

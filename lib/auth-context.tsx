@@ -12,7 +12,6 @@ import { logger, setLoggerUser, clearLoggerUser } from './logger';
 import type { UserSnapshot, CompanySnapshot, AccessSnapshot, LoginDto } from './types/api';
 
 interface AuthState {
-  /** true enquanto está verificando o token salvo no storage */
   isLoading: boolean;
   isAuthenticated: boolean;
   token: string | null;
@@ -44,15 +43,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionExpiredMessage: null,
   });
 
-  // Flag para evitar que o callback 401 dispare durante a restauração da sessão
   const isRestoringSession = useRef(true);
   const isHandlingUnauthorized = useRef(false);
 
-  // Registrar callback de 401 — só age depois que a sessão foi restaurada
+  // Log de diagnóstico: AuthProvider montou
+  useEffect(() => {
+    logger.info('init', 'AuthProvider montado — iniciando restauração de sessão', {
+      platform: require('react-native').Platform.OS,
+      version: require('expo-constants').default.expoConfig?.version,
+    });
+  }, []);
+
+  // Registrar callback de 401
   useEffect(() => {
     setUnauthorizedCallback(() => {
-      // Ignorar 401s que chegam durante a inicialização (ex: CompanyContext carregando)
-      if (isRestoringSession.current) return;
+      if (isRestoringSession.current) {
+        logger.info('auth', '401 ignorado durante restauração de sessão');
+        return;
+      }
       if (isHandlingUnauthorized.current) return;
 
       isHandlingUnauthorized.current = true;
@@ -68,7 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         access: [],
         sessionExpiredMessage: 'Sessão expirada, faça login novamente.',
       }));
-      // Resetar após um tick para evitar loops
       setTimeout(() => {
         isHandlingUnauthorized.current = false;
       }, 500);
@@ -79,12 +86,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function restoreSession() {
       isRestoringSession.current = true;
+      logger.info('init', 'PASSO 1: Iniciando restoreSession');
+
       try {
+        logger.info('init', 'PASSO 2: Lendo token do SecureStore...');
         const token = await storage.getSecure(STORAGE_KEYS.AUTH_TOKEN);
+        logger.info('init', `PASSO 3: Token encontrado: ${token ? 'SIM' : 'NÃO'}`);
+
         const expiresAt = await storage.getItem(STORAGE_KEYS.AUTH_EXPIRES);
+        logger.info('init', `PASSO 4: ExpiresAt: ${expiresAt ?? 'null'}`);
 
         if (!token || !expiresAt) {
-          // Sem sessão salva → ir para login
+          logger.info('init', 'PASSO 5: Sem sessão salva → redirecionando para login');
           setState({
             isLoading: false,
             isAuthenticated: false,
@@ -98,9 +111,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Verificar se o token está expirado localmente
+        // Verificar expiração
         const expiry = new Date(expiresAt);
-        if (expiry <= new Date()) {
+        const now = new Date();
+        logger.info('init', `PASSO 5: Verificando expiração: expiry=${expiry.toISOString()} now=${now.toISOString()} expirado=${expiry <= now}`);
+
+        if (expiry <= now) {
+          logger.info('init', 'PASSO 6: Token expirado → limpando e redirecionando para login');
           await clearAuthData();
           setState({
             isLoading: false,
@@ -115,10 +132,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Token válido — restaurar dados do usuário
+        logger.info('init', 'PASSO 6: Token válido → restaurando dados do usuário...');
         const userStr = await storage.getItem(STORAGE_KEYS.AUTH_USER);
         const companiesStr = await storage.getItem(STORAGE_KEYS.AUTH_COMPANIES);
         const accessStr = await storage.getItem(STORAGE_KEYS.AUTH_ACCESS);
+
+        logger.info('init', `PASSO 7: Dados lidos: user=${userStr ? 'OK' : 'null'} companies=${companiesStr ? 'OK' : 'null'} access=${accessStr ? 'OK' : 'null'}`);
 
         const user = userStr ? (JSON.parse(userStr) as UserSnapshot) : null;
         const companies = companiesStr ? (JSON.parse(companiesStr) as CompanySnapshot[]) : [];
@@ -131,6 +150,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         }
 
+        logger.info('init', `PASSO 8: Sessão restaurada com sucesso — user=${user?.email ?? 'null'} companies=${companies.length} access=${access.length}`);
+
         setState({
           isLoading: false,
           isAuthenticated: true,
@@ -142,8 +163,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionExpiredMessage: null,
         });
       } catch (err) {
-        // Erro ao ler storage — limpar e ir para login
-        logger.captureError('auth', err, { context: 'restoreSession' });
+        logger.captureError('init', err, { context: 'restoreSession — ERRO CRÍTICO' });
+        logger.fatal('init', `ERRO FATAL em restoreSession: ${err instanceof Error ? err.message : String(err)}`, {
+          stack: err instanceof Error ? err.stack : undefined,
+        });
         await clearAuthData();
         setState({
           isLoading: false,
@@ -156,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionExpiredMessage: null,
         });
       } finally {
-        // Liberar o guard após a restauração completa
+        logger.info('init', 'PASSO 9: restoreSession finalizado — liberando guard de 401');
         setTimeout(() => {
           isRestoringSession.current = false;
         }, 300);
@@ -167,43 +190,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (dto: LoginDto) => {
-    const data = await authApi.login(dto);
+    logger.info('auth', `Tentativa de login: ${dto.email}`);
+    try {
+      const data = await authApi.login(dto);
+      logger.info('auth', `Login bem-sucedido: ${data.user?.email ?? 'unknown'}`);
 
-    // Salvar token de forma segura
-    await storage.setSecure(STORAGE_KEYS.AUTH_TOKEN, data.token);
+      await storage.setSecure(STORAGE_KEYS.AUTH_TOKEN, data.token);
+      await storage.setItem(STORAGE_KEYS.AUTH_EXPIRES, data.expiresAt);
+      await storage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(data.user));
+      await storage.setItem(STORAGE_KEYS.AUTH_COMPANIES, JSON.stringify(data.companies));
+      await storage.setItem(STORAGE_KEYS.AUTH_ACCESS, JSON.stringify(data.access));
 
-    // Salvar demais dados em AsyncStorage
-    await storage.setItem(STORAGE_KEYS.AUTH_EXPIRES, data.expiresAt);
-    await storage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(data.user));
-    await storage.setItem(STORAGE_KEYS.AUTH_COMPANIES, JSON.stringify(data.companies));
-    await storage.setItem(STORAGE_KEYS.AUTH_ACCESS, JSON.stringify(data.access));
+      setLoggerUser({
+        userId: String(data.user?.id ?? ''),
+        userEmail: data.user?.email,
+      });
 
-    setLoggerUser({
-      userId: String(data.user?.id ?? ''),
-      userEmail: data.user?.email,
-    });
+      isRestoringSession.current = false;
 
-    isRestoringSession.current = false;
-
-    setState({
-      isLoading: false,
-      isAuthenticated: true,
-      token: data.token,
-      expiresAt: data.expiresAt,
-      user: data.user,
-      companies: data.companies,
-      access: data.access,
-      sessionExpiredMessage: null,
-    });
+      setState({
+        isLoading: false,
+        isAuthenticated: true,
+        token: data.token,
+        expiresAt: data.expiresAt,
+        user: data.user,
+        companies: data.companies,
+        access: data.access,
+        sessionExpiredMessage: null,
+      });
+    } catch (err) {
+      logger.captureError('auth', err, { context: 'login', email: dto.email });
+      throw err;
+    }
   }, []);
 
   const logout = useCallback(async () => {
+    logger.info('auth', 'Logout iniciado');
     clearLoggerUser();
     isRestoringSession.current = true;
     try {
       await authApi.logout();
     } catch {
-      // Ignorar erros de logout (token pode já estar inválido)
+      // Ignorar erros de logout
     } finally {
       await clearAuthData();
       setState({
@@ -226,7 +254,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, sessionExpiredMessage: null }));
   }, []);
 
-  // Verificar se o usuário tem role Master
   const isMaster =
     state.user?.roles?.toLowerCase().includes('master') ||
     state.access.some((a) => a.roleKey?.toLowerCase() === 'master') ||
