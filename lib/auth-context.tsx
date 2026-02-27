@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { storage, STORAGE_KEYS } from './storage';
 import { authApi, clearAuthData, setUnauthorizedCallback } from './api';
+import { logger, setLoggerUser, clearLoggerUser } from './logger';
 import type { UserSnapshot, CompanySnapshot, AccessSnapshot, LoginDto } from './types/api';
 
 interface AuthState {
@@ -49,6 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUnauthorizedCallback(() => {
       if (isHandlingUnauthorized.current) return;
       isHandlingUnauthorized.current = true;
+      clearLoggerUser();
+      logger.warn('auth', 'Sessão expirada — token inválido (401)');
       setState((prev) => ({
         ...prev,
         isAuthenticated: false,
@@ -125,6 +128,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await storage.setItem(STORAGE_KEYS.AUTH_COMPANIES, JSON.stringify(data.companies));
     await storage.setItem(STORAGE_KEYS.AUTH_ACCESS, JSON.stringify(data.access));
 
+    setLoggerUser({
+      userId: String(data.user?.id ?? ''),
+      userEmail: data.user?.email,
+    });
+    logger.info('auth', 'Login realizado com sucesso', { email: data.user?.email });
     setState({
       isLoading: false,
       isAuthenticated: true,
@@ -138,6 +146,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    logger.info('auth', 'Logout realizado');
+    clearLoggerUser();
     await authApi.logout();
     setState({
       isLoading: false,

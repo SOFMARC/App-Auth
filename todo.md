@@ -105,3 +105,22 @@
 - [x] Filtrar Permissões por empresa selecionada
 - [x] Persistir empresa selecionada no AsyncStorage
 - [x] Exibir empresa ativa em todas as telas como badge no header
+
+## Bug: Crash na Inicialização
+- [ ] Investigar crash ao abrir o app (fecha imediatamente sem mostrar login)
+- [ ] Corrigir root layout / providers
+- [ ] Corrigir lógica de redirecionamento auth
+- [ ] Validar estabilidade em Android e iOS
+
+## Bug: Crash Android (expo-symbols)
+- [x] Remover import direto de expo-symbols (iOS-only) do icon-symbol.tsx
+- [x] Usar apenas tipos locais para SymbolViewProps e SymbolWeight
+- [x] Validar que o app abre corretamente no Android
+
+## Cloudflare D1 — Sistema de Logs
+- [x] Criar banco D1 no Cloudflare via MCP
+- [x] Criar tabela app_logs com campos: id, level, category, message, metadata, user_id, company_id, app_version, platform, created_at
+- [x] Criar Worker Cloudflare com endpoint REST para inserir e consultar logs
+- [x] Implementar serviço de logging no app (captura erros, navegação, ações críticas)
+- [x] Capturar crash/erros globais com ErrorBoundary
+- [x] Criar tela de Logs no app com filtros por nível, categoria e data
