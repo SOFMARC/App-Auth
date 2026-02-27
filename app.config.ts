@@ -30,7 +30,8 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.0.3",
+  // v1.0.7 — Suporte a 16KB page size (Android 15+/16) + logs granulares de crash
+  version: "1.0.7",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
@@ -86,6 +87,13 @@ const config: ExpoConfig = {
       "expo-build-properties",
       {
         android: {
+          // Suporte a dispositivos com página de memória de 16KB (Android 15+/API 35+)
+          // Necessário para Samsung Galaxy S25 Ultra e outros dispositivos Android 16
+          // NDK 29+ compila bibliotecas nativas com alinhamento de 16KB
+          compileSdkVersion: 36,
+          targetSdkVersion: 35,
+          buildToolsVersion: "35.0.0",
+          ndkVersion: "29.0.13113456",
           buildArchs: ["armeabi-v7a", "arm64-v8a"],
           minSdkVersion: 24,
         },

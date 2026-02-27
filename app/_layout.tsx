@@ -1,6 +1,7 @@
 import "@/global.css";
 // PRIMEIRO import — instala handlers de crash antes de qualquer React
 import "@/lib/native-crash-reporter";
+import { sendCrashLog } from "@/lib/native-crash-reporter";
 import { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -19,17 +20,28 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { logger } from "@/lib/logger";
 
 // Log imediato ao carregar o módulo (antes de qualquer React)
-logger.info('init', `[LAYOUT] Módulo _layout.tsx carregado — plataforma: ${Platform.OS}`);
+sendCrashLog("info", "[LAYOUT-1] Módulo _layout.tsx carregado — plataforma: " + Platform.OS);
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-      staleTime: 30_000,
+// Log após imports
+sendCrashLog("info", "[LAYOUT-2] Todos os imports carregados com sucesso");
+
+let queryClient: QueryClient;
+try {
+  sendCrashLog("info", "[LAYOUT-3] Criando QueryClient...");
+  queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false,
+        retry: 1,
+        staleTime: 30_000,
+      },
     },
-  },
-});
+  });
+  sendCrashLog("info", "[LAYOUT-4] QueryClient criado com sucesso");
+} catch (err) {
+  sendCrashLog("fatal", "[LAYOUT-3-ERR] Falha ao criar QueryClient: " + String(err));
+  throw err;
+}
 
 export const unstable_settings = {
   anchor: "(auth)",
@@ -60,7 +72,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, isLoading, segments]);
 
   if (isLoading) {
-    logger.info('init', '[AUTHGUARD] Exibindo tela de loading...');
     return (
       <View
         style={{
@@ -75,8 +86,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  logger.info('init', '[AUTHGUARD] Montando CompanyProvider + ToastProvider + children');
-
   return (
     <CompanyProvider>
       <ToastProvider>
@@ -87,14 +96,19 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  sendCrashLog("info", "[LAYOUT-5] RootLayout() chamado — iniciando render");
+
   const colorScheme = useColorScheme();
 
   useEffect(() => {
+    sendCrashLog("info", "[LAYOUT-6] RootLayout useEffect — componente montado com sucesso!");
     logger.info('init', '[ROOT] RootLayout montado com sucesso');
     return () => {
       logger.info('init', '[ROOT] RootLayout desmontado');
     };
   }, []);
+
+  sendCrashLog("info", "[LAYOUT-7] Iniciando render da árvore de providers...");
 
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
