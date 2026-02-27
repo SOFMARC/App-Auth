@@ -151,3 +151,9 @@
 - [x] Corrigir App: API retorna appId, app usa .id — mapear no api.ts
 - [x] Corrigir Company: API retorna companyId, app usa .id — mapear no api.ts
 - [x] Corrigir User: API retorna roles, app usa globalRoles — mapear no api.ts
+
+## Bug: CompanyContext chamando API sem token
+- [x] Corrigir CompanyContext para só carregar empresas após isAuthenticated=true
+- [x] Integrar endpoint /api/access/me para restaurar estado de acesso pós-login
+- [x] Integrar endpoint /api/access/me/for para verificar acesso por empresa+app
+- [x] Garantir que nenhum provider faz chamada à API antes do token estar disponível (CompanyProvider movido para dentro do AuthGuard)

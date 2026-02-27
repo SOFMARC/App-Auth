@@ -21,6 +21,7 @@ import type {
   UserAccess,
   ListFilter,
   ChangePasswordDto,
+  AccessSnapshot,
 } from './types/api';
 
 // Callback para forçar logout quando receber 401
@@ -161,6 +162,31 @@ export const authApi = {
   async changePassword(dto: ChangePasswordDto): Promise<void> {
     const api = await getApiInstance();
     await api.post('/api/Auth/change-password', dto);
+  },
+};
+
+// ============================================================
+// Access — Permissões do usuário autenticado
+// ============================================================
+export const accessApi = {
+  /** Retorna todas as empresas e acessos do usuário autenticado */
+  async me(): Promise<{ companies: { companyId: number; name: string }[]; access: AccessSnapshot[] }> {
+    const api = await getApiInstance();
+    const res = await api.get<ApiResponse<{ companies: { companyId: number; name: string }[]; access: AccessSnapshot[] }>>('/api/access/me');
+    return res.data.data ?? { companies: [], access: [] };
+  },
+
+  /** Verifica acesso do usuário para uma empresa+app específica */
+  async meFor(companyId: number, appKey: string): Promise<AccessSnapshot | null> {
+    const api = await getApiInstance();
+    try {
+      const res = await api.get<ApiResponse<AccessSnapshot>>('/api/access/me/for', {
+        params: { companyId, appKey },
+      });
+      return res.data.data ?? null;
+    } catch {
+      return null;
+    }
   },
 };
 

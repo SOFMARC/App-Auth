@@ -1,5 +1,5 @@
 import "@/global.css";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -37,6 +37,9 @@ export const unstable_settings = {
  * - Enquanto isLoading=true: mostra tela de carregamento, não navega
  * - Não autenticado + fora do grupo (auth): redireciona para login
  * - Autenticado + dentro do grupo (auth): redireciona para tabs
+ *
+ * IMPORTANTE: CompanyProvider fica DENTRO do AuthGuard para garantir que
+ * nunca chame a API antes do token estar disponível.
  */
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -56,6 +59,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, segments]);
 
+  // Mostrar loading enquanto verifica a sessão salva
   if (isLoading) {
     return (
       <View
@@ -71,7 +75,15 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  // CompanyProvider só monta aqui — APÓS isLoading=false e com token disponível
+  // Isso garante que nunca chamará a API sem autenticação
+  return (
+    <CompanyProvider>
+      <ToastProvider>
+        {children}
+      </ToastProvider>
+    </CompanyProvider>
+  );
 }
 
 export default function RootLayout() {
@@ -83,14 +95,13 @@ export default function RootLayout() {
     };
   }, []);
 
-  const content = (
-    <ErrorBoundary>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuthProvider>
-            <CompanyProvider>
-              <ToastProvider>
+  return (
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <ErrorBoundary>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <QueryClientProvider client={queryClient}>
+            <ThemeProvider>
+              <AuthProvider>
                 <AuthGuard>
                   <Stack screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="index" />
@@ -112,18 +123,11 @@ export default function RootLayout() {
                   </Stack>
                 </AuthGuard>
                 <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-              </ToastProvider>
-            </CompanyProvider>
-          </AuthProvider>
-        </ThemeProvider>
-        </QueryClientProvider>
-      </GestureHandlerRootView>
-    </ErrorBoundary>
-  );
-
-  return (
-    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-      {content}
+              </AuthProvider>
+            </ThemeProvider>
+          </QueryClientProvider>
+        </GestureHandlerRootView>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }
