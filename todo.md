@@ -217,3 +217,7 @@
 - [x] Identificar causa raiz do crash nativo: Samsung Galaxy S25 Ultra (Android API 36) exige alinhamento de 16KB nas bibliotecas nativas (.so)
 - [x] Atualizar app.config.ts: compileSdkVersion=36, targetSdkVersion=35, buildToolsVersion=35.0.0, ndkVersion=29.0.13113456
 - [x] Bump version para 1.0.7
+
+## Fix: Erro useThemeContext fora do ThemeProvider
+
+- [x] Separar RootLayout em RootLayout + InnerLayout para garantir que useColorScheme() seja chamado dentro do ThemeProvider

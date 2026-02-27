@@ -95,19 +95,53 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function RootLayout() {
-  sendCrashLog("info", "[LAYOUT-5] RootLayout() chamado — iniciando render");
-
+/**
+ * InnerLayout é renderizado DENTRO do ThemeProvider.
+ * Isso garante que useColorScheme() (que depende do ThemeProvider)
+ * seja chamado apenas depois que o provider já está na árvore.
+ */
+function InnerLayout() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
-    sendCrashLog("info", "[LAYOUT-6] RootLayout useEffect — componente montado com sucesso!");
+    sendCrashLog("info", "[LAYOUT-6] InnerLayout useEffect — componente montado com sucesso!");
     logger.info('init', '[ROOT] RootLayout montado com sucesso');
     return () => {
       logger.info('init', '[ROOT] RootLayout desmontado');
     };
   }, []);
 
+  return (
+    <>
+      <AuthGuard>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="settings-url" />
+          <Stack.Screen name="users/[id]" />
+          <Stack.Screen name="users/new" />
+          <Stack.Screen name="users/[id]/edit" />
+          <Stack.Screen name="users/[id]/permissions" />
+          <Stack.Screen name="companies/[id]" />
+          <Stack.Screen name="companies/new" />
+          <Stack.Screen name="companies/[id]/edit" />
+          <Stack.Screen name="apps/[id]" />
+          <Stack.Screen name="apps/new" />
+          <Stack.Screen name="apps/[id]/edit" />
+          <Stack.Screen name="apps/[id]/roles" />
+          <Stack.Screen name="oauth/callback" />
+          <Stack.Screen name="diagnostic" />
+        </Stack>
+      </AuthGuard>
+
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+    </>
+  );
+}
+
+export default function RootLayout() {
+  sendCrashLog("info", "[LAYOUT-5] RootLayout() chamado — iniciando render");
   sendCrashLog("info", "[LAYOUT-7] Iniciando render da árvore de providers...");
 
   return (
@@ -117,28 +151,7 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <ThemeProvider>
               <AuthProvider>
-                <AuthGuard>
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="index" />
-                    <Stack.Screen name="(auth)" />
-                    <Stack.Screen name="(tabs)" />
-                    <Stack.Screen name="settings-url" />
-                    <Stack.Screen name="users/[id]" />
-                    <Stack.Screen name="users/new" />
-                    <Stack.Screen name="users/[id]/edit" />
-                    <Stack.Screen name="users/[id]/permissions" />
-                    <Stack.Screen name="companies/[id]" />
-                    <Stack.Screen name="companies/new" />
-                    <Stack.Screen name="companies/[id]/edit" />
-                    <Stack.Screen name="apps/[id]" />
-                    <Stack.Screen name="apps/new" />
-                    <Stack.Screen name="apps/[id]/edit" />
-                    <Stack.Screen name="apps/[id]/roles" />
-                    <Stack.Screen name="oauth/callback" />
-                    <Stack.Screen name="diagnostic" />
-                  </Stack>
-                </AuthGuard>
-                <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+                <InnerLayout />
               </AuthProvider>
             </ThemeProvider>
           </QueryClientProvider>
