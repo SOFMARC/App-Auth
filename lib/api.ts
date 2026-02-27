@@ -113,17 +113,19 @@ export async function clearAuthData() {
 export function extractErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
-    const data = error.response?.data;
+    const data = error.response?.data as Record<string, unknown> | undefined;
 
     if (status === 403) return 'Sem permissão para realizar esta ação.';
     if (status === 404) return 'Recurso não encontrado.';
     if (status === 500) return 'Erro interno do servidor. Tente novamente.';
 
-    if (data?.message) return data.message;
-    if (data?.errors && Array.isArray(data.errors)) return data.errors.join(', ');
+    // Mensagem da API: { success: false, message: "..." }
+    if (data?.message && typeof data.message === 'string') return data.message;
+    if (data?.errors && Array.isArray(data.errors)) return (data.errors as string[]).join(', ');
     if (typeof data === 'string') return data;
 
     if (status === 400) return 'Dados inválidos. Verifique os campos e tente novamente.';
+    if (status === 401) return 'E-mail ou senha inválidos.';
   }
 
   if (error instanceof Error) return error.message;
@@ -137,10 +139,20 @@ export const authApi = {
   async login(dto: LoginDto): Promise<LoginResponse> {
     const api = await getApiInstance();
     const res = await api.post<ApiResponse<LoginResponse>>('/api/Auth/login', dto);
-    if (!res.data.success || !res.data.data) {
-      throw new Error(res.data.message || 'Falha no login');
+
+    // A API pode retornar HTTP 200 com success=false e uma mensagem de erro
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'E-mail ou senha inválidos.');
     }
-    return res.data.data;
+
+    // A API pode retornar o LoginResponse diretamente na raiz (sem wrapper data)
+    const loginData = res.data.data ?? (res.data as unknown as LoginResponse);
+
+    if (!loginData?.token) {
+      throw new Error(res.data.message || 'Resposta inválida do servidor.');
+    }
+
+    return loginData;
   },
 
   async me(): Promise<unknown> {

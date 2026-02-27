@@ -221,3 +221,7 @@
 ## Fix: Erro useThemeContext fora do ThemeProvider
 
 - [x] Separar RootLayout em RootLayout + InnerLayout para garantir que useColorScheme() seja chamado dentro do ThemeProvider
+
+## Fix: Mensagem de erro de login da API
+
+- [x] Exibir mensagem retornada pela API (success=false, message="Email ou senha inválidos") na tela de login

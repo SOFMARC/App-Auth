@@ -24,6 +24,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { login, sessionExpiredMessage, clearSessionMessage } = useAuth();
   const { showError, showWarning } = useToast();
@@ -38,8 +39,10 @@ export default function LoginScreen() {
   }, [sessionExpiredMessage]);
 
   async function handleLogin() {
+    setErrorMessage(null);
+
     if (!email.trim() || !password.trim()) {
-      showError("Preencha e-mail e senha.");
+      setErrorMessage("Preencha e-mail e senha.");
       return;
     }
 
@@ -48,7 +51,9 @@ export default function LoginScreen() {
       await login({ email: email.trim(), password });
       // AuthGuard vai redirecionar automaticamente
     } catch (err) {
-      showError(extractErrorMessage(err));
+      const msg = extractErrorMessage(err);
+      setErrorMessage(msg);
+      showError(msg);
     } finally {
       setLoading(false);
     }
@@ -135,6 +140,14 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+
+            {/* Mensagem de erro inline */}
+            {errorMessage ? (
+              <View style={[styles.errorBox, { backgroundColor: colors.error + '18', borderColor: colors.error + '40' }]}>
+                <IconSymbol name="exclamationmark.circle.fill" size={16} color={colors.error} />
+                <Text style={[styles.errorText, { color: colors.error }]}>{errorMessage}</Text>
+              </View>
+            ) : null}
 
             {/* Botão Entrar */}
             <TouchableOpacity
@@ -279,5 +292,20 @@ const styles = StyleSheet.create({
   },
   settingsLinkText: {
     fontSize: 13,
+  },
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "500",
+    lineHeight: 18,
   },
 });
