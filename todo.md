@@ -232,3 +232,8 @@
 - [x] Adicionar olhinho (toggle visibilidade) em todos os campos de senha do app (settings, new-user)
 - [x] Redesenhar tela de detalhes da Empresa com abas: Info, Apps, Usuários (com modal de grant de acesso)
 - [x] Melhorar fluxo Empresa → App → Usuários: tela de empresa mostra apps do sistema e usuários com botão de conceder acesso por app+role
+
+## Fix: Crash UserDetailScreen (split de undefined)
+
+- [x] Corrigir crash em UserDetailScreen: TypeError Cannot read property 'split' of undefined — campo nome/name undefined na tela de detalhes do usuário
+- [x] Normalizar todos os campos do usuário (nome, email, ativo) na tela de detalhes com fallbacks seguros via função normalizeUser no api.ts

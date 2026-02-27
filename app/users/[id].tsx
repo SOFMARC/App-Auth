@@ -124,12 +124,13 @@ export default function UserDetailScreen() {
     );
   }
 
+  const displayName = user.nome || user.email || "Usuário";
   const roles = user.globalRoles?.split(";").filter(Boolean) ?? [];
 
   return (
     <ScreenContainer>
       <ScreenHeader
-        title={user.nome}
+        title={displayName}
         subtitle={user.email}
         rightAction={{
           icon: "pencil",
@@ -141,14 +142,14 @@ export default function UserDetailScreen() {
         <View style={[styles.profileSection, { backgroundColor: colors.primary }]}>
           <View style={[styles.bigAvatar, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
             <Text style={styles.bigAvatarText}>
-              {user.nome
+              {displayName
                 .split(" ")
                 .slice(0, 2)
-                .map((w) => w[0]?.toUpperCase() ?? "")
+                .map((w: string) => w[0]?.toUpperCase() ?? "")
                 .join("")}
             </Text>
           </View>
-          <Text style={styles.profileName}>{user.nome}</Text>
+          <Text style={styles.profileName}>{displayName}</Text>
           <Text style={styles.profileEmail}>{user.email}</Text>
           <StatusBadge active={user.ativo} />
         </View>
@@ -157,7 +158,7 @@ export default function UserDetailScreen() {
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.cardTitle, { color: colors.foreground }]}>Informações</Text>
           <InfoRow label="ID" value={String(user.id)} />
-          <InfoRow label="Nome" value={user.nome} />
+          <InfoRow label="Nome" value={displayName} />
           <InfoRow label="E-mail" value={user.email} />
           <InfoRow label="Status" value={user.ativo ? "Ativo" : "Inativo"} />
           {user.globalRoles && <InfoRow label="Roles Globais" value={user.globalRoles} />}
@@ -215,7 +216,7 @@ export default function UserDetailScreen() {
       <ConfirmDialog
         visible={confirmToggle}
         title={user.ativo ? "Inativar Usuário" : "Ativar Usuário"}
-        message={`Deseja ${user.ativo ? "inativar" : "ativar"} o usuário "${user.nome}"?`}
+        message={`Deseja ${user.ativo ? "inativar" : "ativar"} o usuário "${displayName}"?`}
         confirmLabel={user.ativo ? "Inativar" : "Ativar"}
         destructive={user.ativo}
         loading={toggleStatus.isPending}
@@ -226,7 +227,7 @@ export default function UserDetailScreen() {
       <ConfirmDialog
         visible={confirmReset}
         title="Redefinir Senha"
-        message={`A senha de "${user.nome}" será redefinida para "Mudar@123". O usuário deverá alterá-la no próximo acesso.`}
+        message={`A senha de "${displayName}" será redefinida para "Mudar@123". O usuário deverá alterá-la no próximo acesso.`}
         confirmLabel="Redefinir"
         destructive
         loading={resetPassword.isPending}

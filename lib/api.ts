@@ -205,6 +205,19 @@ export const accessApi = {
 // ============================================================
 // Admin — Usuários
 // ============================================================
+// Normaliza campos do usuário: API pode retornar 'nome' ou 'name', 'roles' ou 'globalRoles'
+function normalizeUser(raw: Record<string, unknown>): User {
+  const nome = (raw.nome ?? raw.name ?? "") as string;
+  const globalRoles = (raw.globalRoles ?? raw.roles ?? null) as string | null;
+  return {
+    id: raw.id as number,
+    nome,
+    email: (raw.email ?? "") as string,
+    ativo: (raw.ativo ?? true) as boolean,
+    globalRoles,
+  };
+}
+
 export const usersApi = {
   async list(filter?: UsersFilter): Promise<User[]> {
     const api = await getApiInstance();
@@ -214,35 +227,28 @@ export const usersApi = {
     if (filter?.take !== undefined) params.take = filter.take;
     const res = await api.get<ApiResponse<User[]>>('/api/admin/users', { params });
     const raw = res.data.data ?? (res.data as unknown as User[]) ?? [];
-    // Normalize: API returns 'roles' field, type uses 'globalRoles'
-    return raw.map((u: User & { roles?: string }) => ({
-      ...u,
-      globalRoles: u.globalRoles ?? u.roles ?? null,
-    }));
+    return (raw as unknown as Record<string, unknown>[]).map(normalizeUser);
   },
 
   async get(id: number): Promise<User> {
     const api = await getApiInstance();
     const res = await api.get<ApiResponse<User>>(`/api/admin/users/${id}`);
     const raw = res.data.data ?? (res.data as unknown as User);
-    const u = raw as User & { roles?: string };
-    return { ...u, globalRoles: u.globalRoles ?? u.roles ?? null };
+    return normalizeUser(raw as unknown as Record<string, unknown>);
   },
 
   async create(dto: CreateUserDto): Promise<User> {
     const api = await getApiInstance();
     const res = await api.post<ApiResponse<User>>('/api/admin/users', dto);
     const raw = res.data.data ?? (res.data as unknown as User);
-    const u = raw as User & { roles?: string };
-    return { ...u, globalRoles: u.globalRoles ?? u.roles ?? null };
+    return normalizeUser(raw as unknown as Record<string, unknown>);
   },
 
   async update(id: number, dto: UpdateUserDto): Promise<User> {
     const api = await getApiInstance();
     const res = await api.put<ApiResponse<User>>(`/api/admin/users/${id}`, dto);
     const raw = res.data.data ?? (res.data as unknown as User);
-    const u = raw as User & { roles?: string };
-    return { ...u, globalRoles: u.globalRoles ?? u.roles ?? null };
+    return normalizeUser(raw as unknown as Record<string, unknown>);
   },
 
   async setStatus(id: number, active: boolean): Promise<void> {
